@@ -1,6 +1,5 @@
-import fs from 'fs/promises';
+import fs from 'node:fs/promises';
 const f = await fs.open('data', 'a+');
-
 
 //await fd.write(bytes, 0, bytes.length);
 
@@ -17,7 +16,7 @@ const w = async (arr, offset = 0, position = 0) => {
 const T_STRING = 1;
 const BYTES_NUMBER = 1;
 
-await w([88], 0, 40);
+//await w([88], 0, 40);
 //console.log(await r(100));
 
 await f.close();
