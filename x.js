@@ -1,39 +1,87 @@
-export const X = (symbol) => {
-  const _ = symbol;
-  const f = {};
+export const isObj = (v) => typeof v === 'object' && v !== null && !Array.isArray(v);
+export const pathToArr = (path) => {
+  if (!path) return [];
+  return Array.isArray(path) ? path : path.split('.');
+};
+export const parseCliArgs = (cliArgs) => {
+  const args = {};
+  let num = 0;
 
-  return async (x) => {
-    if (x.callFuncName) {
-      return await f[x.callFuncName](x);
+  for (let i = 0; i < cliArgs.length; i++) {
+    if (i < 2) continue; //skip node and scriptName args
+
+    let arg = cliArgs[i];
+    args[num++] = arg;
+
+    if (arg.includes('=')) {
+      let [k, v] = arg.split('=');
+      if (!v) {
+        args[num] = arg; //start write args from main 0
+        continue;
+      }
+      args[k.trim()] = v.trim();
+    } else {
+      args['cmd'] = arg;
     }
-    if (x.func && x.funcName) {
-      f[x.funcName] = x.func;
+  }
+  return args;
+};
+export const getDateTime = () => {
+  const d = new Date();
+
+  let year = d.getFullYear();
+  let month = ('0' + (d.getMonth() + 1)).slice(-2); // Months are zero-based
+  let day = ('0' + d.getDate()).slice(-2);
+  const hours = ('0' + d.getHours()).slice(-2);
+  const minutes = ('0' + d.getMinutes()).slice(-2);
+  const seconds = ('0' + d.getSeconds()).slice(-2);
+
+  return (
+    year + '-' + month + '-' + day + '_' + hours + ':' + minutes + ':' + seconds
+  );
+};
+
+const queue = {
+  calls: [],
+  on: false,
+  worker: false,
+  async push(x) {
+    this.calls.push(x);
+    await this.process();
+  },
+  async process() {
+    if (this.isOn) return;
+    this.isOn = true;
+
+    while (1) {
+      const x = this.calls.shift();
+      if (!x) {
+        this.isOn = false;
+        break;
+      }
+      await this.worker(x);
     }
-  };
+    this.isOn = false;
+  },
 };
 
 export const b = {
+  f: {},
   set_(_) {
     this._ = _;
   },
   get_() {
     return this._;
   },
-  setExec(exec) {
-    this.exec = exec;
-  },
   async p(e, d) {
-    const _ = this._;
     const inject = {
-      _: _,
+      _: this._,
       b: this,
-      callFuncName: e
     };
-    return await this.exec({ ...d, ...inject });
+    return await f[e]({ ...d, ...inject });
   },
   async s(e, f) {
-    const _ = this._;
-    return await this.exec({ funcName: e, func: f });
+    this.f[e] = f;
   },
   async x(d) {
     return this.p('x', d);
@@ -45,7 +93,7 @@ export const busFactory = () => {
 
   const bus = Object.create(b);
   bus.set_(_);
-  bus.setExec(X(_));
+  //bus.setExec(X(_));
 
   const proxy = new Proxy(function () { }, {
     get(t, p) {
@@ -631,51 +679,6 @@ export const prepareForTransfer = (v) => {
   return d;
 };
 
-// UTILS //
-export const isObj = (v) =>
-  typeof v === 'object' && v !== null && !Array.isArray(v);
-export const pathToArr = (path) => {
-  if (!path) return [];
-  return Array.isArray(path) ? path : path.split('.');
-};
-export const parseCliArgs = (cliArgs) => {
-  const args = {};
-  let num = 0;
-
-  for (let i = 0; i < cliArgs.length; i++) {
-    if (i < 2) continue; //skip node and scriptName args
-
-    let arg = cliArgs[i];
-    args[num++] = arg;
-
-    if (arg.includes('=')) {
-      let [k, v] = arg.split('=');
-      if (!v) {
-        args[num] = arg; //start write args from main 0
-        continue;
-      }
-      args[k.trim()] = v.trim();
-    } else {
-      args['cmd'] = arg;
-    }
-  }
-  return args;
-};
-export const getDateTime = () => {
-  const d = new Date();
-
-  let year = d.getFullYear();
-  let month = ('0' + (d.getMonth() + 1)).slice(-2); // Months are zero-based
-  let day = ('0' + d.getDate()).slice(-2);
-  const hours = ('0' + d.getHours()).slice(-2);
-  const minutes = ('0' + d.getMinutes()).slice(-2);
-  const seconds = ('0' + d.getSeconds()).slice(-2);
-
-  return (
-    year + '-' + month + '-' + day + '_' + hours + ':' + minutes + ':' + seconds
-  );
-};
-
 //TRANSPORT
 export const httpHandler = async (x) => {
   const { b, runtimeCtx, rq, fs } = x;
@@ -918,6 +921,8 @@ export class HttpClient {
   }
 }
 
+// FRONTEND //
+
 export class IndexedDb {
   async open() {
     return new Promise((resolve, reject) => {
@@ -978,7 +983,99 @@ export class IndexedDb {
   }
 }
 
-// FRONTEND //
+class Dom {
+  constructor(data) {
+    this.data = data || {};
+
+    const { id, type, txt, events, css, addShadowDOM } = this.data;
+
+    const o = document.createElement(type || 'div');
+    this.dom = o;
+
+    if (txt) o.innerText = txt;
+
+    const classD = this.data['class'];
+    if (classD) {
+      o.className = Array.isArray(classD) ? classD.join(' ') : classD;
+    }
+    if (events) for (let k in events) o.addEventListener(k, events[k]);
+    if (css) for (let k in css) o.style[k] = css[k];
+  }
+
+  setDOM(dom) {
+    this.dom = dom;
+  }
+  getDOM() {
+    return this.dom;
+  }
+  getId() {
+    return this.dom.id;
+  }
+
+  on(eventName, callback) {
+    this.getDOM().addEventListener(eventName, callback);
+  }
+  off(eventName, callback) {
+    this.getDOM().removeEventListener(eventName, callback);
+  }
+
+  setTxt(txt) {
+    this.getDOM().innerText = txt;
+  }
+  getTxt() {
+    return this.getDOM().innerText;
+  }
+  setHtml(txt) {
+    this.getDOM().innerHTML = txt;
+  }
+
+  setVal(val) {
+    this.getDOM().value = val;
+  }
+  getVal() {
+    return this.getDOM().value;
+  }
+
+  setAttr(k, v) {
+    this.getDOM().setAttribute(k, v);
+    return this;
+  }
+  setStyle(x) {
+    const o = this.getDOM();
+    for (let p in x) {
+      o.style[p] = x[p];
+    }
+  }
+  getSizes() {
+    return docGetSizes(this.getDOM());
+  }
+  addClass(className) {
+    this.getDOM().classList.add(className);
+  }
+  removeClass(className) {
+    this.getDOM().classList.remove(className);
+  }
+  attachCSS() {
+    const css = new Dom({ type: 'style', txt: this.css });
+    this.ins(css);
+  }
+  attachShadow() {
+    this.shadow = this.getDOM().attachShadow({ mode: 'open' });
+    return this.shadow;
+  }
+
+  ins(DOM) {
+    if (this.shadow) {
+      this.shadow.appendChild(DOM.getDOM());
+      return;
+    }
+    this.dom.appendChild(DOM.getDOM());
+  }
+  append(DOM) {
+    this.getDOM().append(DOM);
+  }
+}
+
 const docMk = (d, x) => {
   const { id, mkApi, type, txt, events, css } = x;
 
@@ -1016,31 +1113,7 @@ const docGetSizes = (o) => {
   };
 };
 
-const q = {
-  calls: [],
-  on: false,
-  worker: false,
-  async push(x) {
-    this.calls.push(x);
-    await this.process();
-  },
-  async process() {
-    if (this.isOn) return;
-    this.isOn = true;
-
-    while (1) {
-      const x = this.calls.shift();
-      if (!x) {
-        this.isOn = false;
-        break;
-      }
-      await this.worker(x);
-    }
-    this.isOn = false;
-  },
-};
-
-const Frame = {
+const frame = {
   setB(b) {
     this.b = b;
   },
@@ -1400,99 +1473,6 @@ const Frame = {
   },
 };
 
-export class Dom {
-  constructor(data) {
-    this.data = data || {};
-
-    const { id, type, txt, events, css, addShadowDOM } = this.data;
-
-    const o = document.createElement(type || 'div');
-    this.dom = o;
-
-    if (txt) o.innerText = txt;
-
-    const classD = this.data['class'];
-    if (classD) {
-      o.className = Array.isArray(classD) ? classD.join(' ') : classD;
-    }
-    if (events) for (let k in events) o.addEventListener(k, events[k]);
-    if (css) for (let k in css) o.style[k] = css[k];
-  }
-
-  setDOM(dom) {
-    this.dom = dom;
-  }
-  getDOM() {
-    return this.dom;
-  }
-  getId() {
-    return this.dom.id;
-  }
-
-  on(eventName, callback) {
-    this.getDOM().addEventListener(eventName, callback);
-  }
-  off(eventName, callback) {
-    this.getDOM().removeEventListener(eventName, callback);
-  }
-
-  setTxt(txt) {
-    this.getDOM().innerText = txt;
-  }
-  getTxt() {
-    return this.getDOM().innerText;
-  }
-  setHtml(txt) {
-    this.getDOM().innerHTML = txt;
-  }
-
-  setVal(val) {
-    this.getDOM().value = val;
-  }
-  getVal() {
-    return this.getDOM().value;
-  }
-
-  setAttr(k, v) {
-    this.getDOM().setAttribute(k, v);
-    return this;
-  }
-  setStyle(x) {
-    const o = this.getDOM();
-    for (let p in x) {
-      o.style[p] = x[p];
-    }
-  }
-  getSizes() {
-    return docGetSizes(this.getDOM());
-  }
-  addClass(className) {
-    this.getDOM().classList.add(className);
-  }
-  removeClass(className) {
-    this.getDOM().classList.remove(className);
-  }
-  attachCSS() {
-    const css = new Dom({ type: 'style', txt: this.css });
-    this.ins(css);
-  }
-  attachShadow() {
-    this.shadow = this.getDOM().attachShadow({ mode: 'open' });
-    return this.shadow;
-  }
-
-  ins(DOM) {
-    if (this.shadow) {
-      this.shadow.appendChild(DOM.getDOM());
-      return;
-    }
-    this.dom.appendChild(DOM.getDOM());
-  }
-  append(DOM) {
-    this.getDOM().append(DOM);
-  }
-}
-
 export class Header extends Dom {
   css = `
     .container {
@@ -1572,7 +1552,42 @@ export class Header extends Dom {
   }
 }
 
-export const DataEditor = {
+const signForm = () => {
+  const act = path === '/sign/in' ? 'Sign In' : 'Sign Up';
+
+  const signForm = new Dom({ class: 'signForm' });
+  app.ins(signForm);
+
+  const signHeader = new Dom({ class: 'header', txt: act });
+  signForm.ins(signHeader);
+
+  const email = new Dom({ type: 'input', class: 'email', txt: '' });
+  signForm.ins(email);
+
+  signForm.ins(new Dom({ type: 'br' }));
+
+  const password = new Dom({ type: 'input', class: 'password', txt: '' });
+  signForm.ins(password);
+
+  signForm.ins(new Dom({ type: 'br' }));
+
+  const btn = new Dom({ type: 'button', class: 'btn', txt: act });
+  signForm.ins(btn);
+
+  btn.on('pointerdown', async (e) => {
+    if (act === 'Sign Up') {
+      // const r = await b.p('x', {
+      //   signUp: {
+      //     email: email.getVal(),
+      //     password: password.getVal(),
+      //   }
+      // });
+      // console.log(r);
+    }
+  });
+}
+
+const dataEditor = {
   root: 'root',
   setB(b) {
     this.b = b;
@@ -2324,7 +2339,7 @@ div[contenteditable="true"] {
   },
 };
 
-const TxtEditor = {
+const txtEditor = {
   setB(b) {
     this.b = b;
   },
@@ -2344,68 +2359,6 @@ const TxtEditor = {
     this.container.append(someTxt);
   },
 };
-
-const byte = async () => {
-  //import fs from 'node:fs/promises';
-  const f = await fs.open('data', 'a+');
-
-  //await fd.write(bytes, 0, bytes.length);
-
-  const r = async (size, offset = 0, position = 0) => {
-    const readArr = new Uint8Array(size);
-    await f.read(readArr, offset, size, position);
-    return readArr;
-  }
-  const w = async (arr, offset = 0, position = 0) => {
-    const bytes = new Uint8Array(arr);
-    await f.write(bytes, offset, bytes.length, position);
-  }
-
-  const T_STRING = 1;
-  const BYTES_NUMBER = 1;
-
-  //await w([88], 0, 40);
-  //console.log(await r(100));
-
-  await f.close();
-
-  //id and size of the bytes to read
-}
-
-const signForm = () => {
-  const act = path === '/sign/in' ? 'Sign In' : 'Sign Up';
-
-  const signForm = new Dom({ class: 'signForm' });
-  app.ins(signForm);
-
-  const signHeader = new Dom({ class: 'header', txt: act });
-  signForm.ins(signHeader);
-
-  const email = new Dom({ type: 'input', class: 'email', txt: '' });
-  signForm.ins(email);
-
-  signForm.ins(new Dom({ type: 'br' }));
-
-  const password = new Dom({ type: 'input', class: 'password', txt: '' });
-  signForm.ins(password);
-
-  signForm.ins(new Dom({ type: 'br' }));
-
-  const btn = new Dom({ type: 'button', class: 'btn', txt: act });
-  signForm.ins(btn);
-
-  btn.on('pointerdown', async (e) => {
-    if (act === 'Sign Up') {
-      // const r = await b.p('x', {
-      //   signUp: {
-      //     email: email.getVal(),
-      //     password: password.getVal(),
-      //   }
-      // });
-      // console.log(r);
-    }
-  });
-}
 
 const runFrontend = async (b) => {
   if (!Array.prototype.at) {
@@ -2491,11 +2444,11 @@ const runFrontend = async (b) => {
   const app = new Dom();
   app.setDOM(appDOM);
 
-  const header = new Header();
-  await b.p('doc.ins', { o1: app.dom, o2: header.dom });
+  //const header = new Header();
+  //await b.p('doc.ins', { o1: app.dom, o2: header.dom });
 
-  //SIMPLE ROUTING
-  const path = doc.location.pathname;
+  //const appDOM = await b.p('doc.mk', {});
+  //await b.p('doc.ins', { o1: app.dom, o2: header.dom });
 
 
   return;
@@ -2555,7 +2508,7 @@ const runFrontend = async (b) => {
   window.onkeydown = (e) => dataEditor.keydown(e);
 };
 
-const runBackend = async () => {
+const runBackend = async (b, ctx) => {
   ctx.fileName = process.argv[1].split('/').at(-1);
 
   const { promises } = await import('node:fs');
@@ -2587,7 +2540,6 @@ const runBackend = async () => {
     // ls.stderr.on('data', (data) => console.error(`stderr: ${data}`));
     // ls.on('close', (code) => console.log(`exit code ${code}`));
   });
-
   await b.s('repo', async (x) => {
     const statePath = 'state';
 
@@ -2773,6 +2725,194 @@ const runBackend = async () => {
   };
 
   await processCliArgs();
+
+  const bType = {
+    BIN: 1,
+    BOOL: 2,
+    INT: 3,
+    STR: 4,
+    MAP: 6,
+    LIST: 7,
+
+    V_LINK: 50, //for vertical links (object and his keys: values)
+    H_LINK: 50, //horizontal link
+
+    DELETED: 100,
+
+    TRANSITION: 150, //
+  };
+
+  const bUtil = {
+    intToUint8Array: (int) => {
+
+      if (int < 0 || int > 0xFFFFFFFF) {
+        throw new RangeError("Number is either negative or too large to be represented in 4 bytes");
+      }
+      let arr;
+
+      if (int <= 0xFF) {
+        //1 bytes
+        arr = new Uint8Array(1);
+        arr[0] = int;
+      } else if (int <= 0xFFFF) {
+        //2 bytes
+        arr = new Uint8Array(2);
+        arr[0] = int & 0xFF;
+        arr[1] = (int >> 8) & 0xFF;
+      } else if (int <= 0xFFFFFF) {
+        // 3 bytes
+        arr = new Uint8Array(3);
+        arr[0] = int & 0xFF;
+        arr[1] = (int >> 8) & 0xFF;
+        arr[2] = (int >> 16) & 0xFF;
+      } else {
+        // 4 bytes
+        arr = new Uint8Array(4);
+        arr[0] = int & 0xFF;
+        arr[1] = (int >> 8) & 0xFF;
+        arr[2] = (int >> 16) & 0xFF;
+        arr[3] = (int >> 24) & 0xFF;
+      }
+
+      return arr;
+    },
+    uint8ArrayToInt: (uint8Array) => {
+
+      if (uint8Array instanceof Uint8Array === false) {
+        throw new TypeError('Expected Uint8Array');
+      }
+
+      let int = 0;
+      const length = uint8Array.length;
+
+      for (let i = 0; i < length; i++) {
+        int |= uint8Array[i] << (8 * i);
+      }
+
+      return int;
+    },
+
+    dataToUint8Array: (v) => {
+      if (typeof v === 'string') {
+        return new TextEncoder().encode(v);
+      }
+      if (typeof v === 'number') {
+        return bUtil.intToUint8Array(v);
+      }
+      throw new Error(`invalid type of v [${typeof v}]`);
+    },
+    uint8ArrayToData: (type, arr) => {
+      if (bType.INT === type) {
+        return bUtil.uint8ArrayToInt(arr);
+      }
+      if (bType.STR === type) {
+
+      }
+      //console.log(type, arr);
+    }
+  }
+  class bFile {
+    async init(fName) {
+      this.fd = await fs.open(fName, 'a+');
+    }
+    async read(size, position = 0) {
+      const arr = new Uint8Array(size);
+      await this.fd.read(arr, 0, size, position);
+      return arr;
+    }
+    async readByte(position = 0) {
+      const arr = new Uint8Array(1);
+      await this.fd.read(arr, 0, 1, position);
+      return arr[0];
+    }
+    async write(arr, offset = 0, position = 0) {
+      await this.fd.write(arr, offset, arr.length, position);
+      return arr;
+    }
+    async writeByte(int, position = 0) {
+      const arr = new Uint8Array([int]);
+      await this.fd.write(arr, 0, arr.length, position);
+      return arr;
+    }
+    async truncate(length) {
+      if (!length) {
+        throw new Error('length cannot be empty');
+      }
+      await this.fd.truncate(length);
+    }
+    async close() {
+      await this.fd.close();
+    }
+  }
+  const writeBlock = async (bin, data, position) => {
+
+    let type;
+    if (typeof data === 'number') {
+      type = bType.INT;
+    } else if (typeof data === 'string') {
+      type = bType.STR;
+    }
+    const arr = bUtil.dataToUint8Array(data);
+
+    //write type
+    await bin.writeByte(type, position);
+
+    const bytesCountPosition = position + 1;
+    const bytesCountArr = bUtil.intToUint8Array(arr.length);
+
+    //write size of BodySize integer
+    await bin.writeByte(bytesCountArr.length, bytesCountPosition);
+
+    //write BodySize integer
+    const bodySizePosition = bytesCountPosition + 1;
+    //console.log(bodySizePosition);
+    await bin.write(bytesCountArr, 0, bodySizePosition);
+
+    //write Body
+    await bin.write(arr, 0, bodySizePosition + bytesCountArr.length);
+  }
+
+  const readBlock = async (bin, position) => {
+    const type = await bin.readByte(position);
+    if (!type) throw new Error('type not found at position 0');
+
+    const bytesCountPos = position + 1;
+    const bytesCountOfSize = await bin.readByte(bytesCountPos);
+
+    const sizePos = bytesCountPos + 1;
+    const sizeBin = await bin.read(bytesCountOfSize, sizePos);
+    if (!sizeBin) throw new Error(`size not found at position ${sizePos}`);
+
+    const size = bUtil.uint8ArrayToInt(sizeBin);
+
+    const bodyPos = sizePos + sizeBin.length;
+    const bodyBin = await bin.read(size, bodyPos);
+
+    //const transitionPos = bodyPos + bodyBin.length;
+    //console.log(transitionPos);
+
+    return {
+      type,
+      bytesCountOfSize,
+      sizeBin,
+      size,
+      bodyBin,
+      body: bUtil.uint8ArrayToData(type, bodyBin),
+      transition: null
+    };
+  }
+
+
+  const bin = new bFile();
+  await bin.init('data');
+  //await bin.truncate(3);
+
+
+  await writeBlock(bin, 80333, 0);
+  console.log(await readBlock(bin, 0));
+
+
+  await bin.close();
 }
 
 //BACKEND
@@ -2801,7 +2941,7 @@ const run = async () => {
     return;
   }
 
-  await runBackend();
+  await runBackend(b, ctx);
 };
 
 run();
