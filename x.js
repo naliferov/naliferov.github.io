@@ -2360,6 +2360,188 @@ const txtEditor = {
   },
 };
 
+
+const bType = {
+  BIN: 1,
+  BOOL: 2,
+  INT: 3,
+  STR: 4,
+  MAP: 6,
+  LIST: 7,
+
+  V_LINK: 50, //for vertical links (object and their keys and values.)
+  H_LINK: 50, //horizontal link
+
+  DELETED: 100,
+
+  EXTENDS: 150,
+};
+
+const bUtil = {
+  intToUint8Array: (int) => {
+
+    if (int < 0 || int > 0xFFFFFFFF) {
+      throw new RangeError("Number is either negative or too large to be represented in 4 bytes");
+    }
+    let arr;
+
+    if (int <= 0xFF) {
+      //1 bytes
+      arr = new Uint8Array(1);
+      arr[0] = int;
+    } else if (int <= 0xFFFF) {
+      //2 bytes
+      arr = new Uint8Array(2);
+      arr[0] = int & 0xFF;
+      arr[1] = (int >> 8) & 0xFF;
+    } else if (int <= 0xFFFFFF) {
+      // 3 bytes
+      arr = new Uint8Array(3);
+      arr[0] = int & 0xFF;
+      arr[1] = (int >> 8) & 0xFF;
+      arr[2] = (int >> 16) & 0xFF;
+    } else {
+      // 4 bytes
+      arr = new Uint8Array(4);
+      arr[0] = int & 0xFF;
+      arr[1] = (int >> 8) & 0xFF;
+      arr[2] = (int >> 16) & 0xFF;
+      arr[3] = (int >> 24) & 0xFF;
+    }
+
+    return arr;
+  },
+  uint8ArrayToInt: (uint8Array) => {
+
+    if (uint8Array instanceof Uint8Array === false) {
+      throw new TypeError('Expected Uint8Array');
+    }
+
+    let int = 0;
+    const length = uint8Array.length;
+
+    for (let i = 0; i < length; i++) {
+      int |= uint8Array[i] << (8 * i);
+    }
+
+    return int;
+  },
+
+  dataToUint8Array: (v) => {
+    if (typeof v === 'string') {
+      return new TextEncoder().encode(v);
+    }
+    if (typeof v === 'number') {
+      return bUtil.intToUint8Array(v);
+    }
+    throw new Error(`invalid type of v [${typeof v}]`);
+  },
+  uint8ArrayToData: (type, arr) => {
+    if (bType.INT === type) {
+      return bUtil.uint8ArrayToInt(arr);
+    }
+    if (bType.STR === type) {
+
+    }
+    //console.log(type, arr);
+  }
+}
+class bFile {
+  async init(fName) {
+    const fs = await import('node:fs/promises');
+    this.fd = await fs.open(fName, 'a+');
+  }
+  async read(size, position = 0) {
+    const arr = new Uint8Array(size);
+    await this.fd.read(arr, 0, size, position);
+    return arr;
+  }
+  async readByte(position = 0) {
+    const arr = new Uint8Array(1);
+    await this.fd.read(arr, 0, 1, position);
+    return arr[0];
+  }
+  async write(arr, offset = 0, position = 0) {
+    await this.fd.write(arr, offset, arr.length, position);
+    return arr;
+  }
+  async writeByte(int, position = 0) {
+    const arr = new Uint8Array([int]);
+    await this.fd.write(arr, 0, arr.length, position);
+    return arr;
+  }
+  async truncate(length) {
+    if (!length) {
+      throw new Error('length cannot be empty');
+    }
+    await this.fd.truncate(length);
+  }
+  async close() {
+    await this.fd.close();
+  }
+}
+const writeBlock = async (bin, data, position) => {
+
+  let type;
+  if (typeof data === 'number') {
+    type = bType.INT;
+  } else if (typeof data === 'string') {
+    type = bType.STR;
+  }
+  const arr = bUtil.dataToUint8Array(data);
+
+  //write type
+  await bin.writeByte(type, position);
+
+  const bytesCountPosition = position + 1;
+  const bytesCountArr = bUtil.intToUint8Array(arr.length);
+
+  //write size of BodySize integer
+  await bin.writeByte(bytesCountArr.length, bytesCountPosition);
+
+  //write BodySize integer
+  const bodySizePosition = bytesCountPosition + 1;
+  //console.log(bodySizePosition);
+  await bin.write(bytesCountArr, 0, bodySizePosition);
+
+  //write Body
+  await bin.write(arr, 0, bodySizePosition + bytesCountArr.length);
+
+  return {
+    type,
+    bodyBin: arr,
+  };
+}
+
+const readBlock = async (bin, position) => {
+  const type = await bin.readByte(position);
+  if (!type) throw new Error('type not found at position 0');
+
+  const bytesCountPos = position + 1;
+  const bytesCountOfSize = await bin.readByte(bytesCountPos);
+
+  const sizePos = bytesCountPos + 1;
+  const sizeBin = await bin.read(bytesCountOfSize, sizePos);
+  if (!sizeBin) throw new Error(`size not found at position ${sizePos}`);
+
+  const size = bUtil.uint8ArrayToInt(sizeBin);
+
+  const bodyPos = sizePos + sizeBin.length;
+  const bodyBin = await bin.read(size, bodyPos);
+
+  //const transitionPos = bodyPos + bodyBin.length;
+  //console.log(transitionPos);
+
+  return {
+    type,
+    bytesCountOfSize,
+    sizeBin,
+    size,
+    bodyBin,
+    body: bUtil.uint8ArrayToData(type, bodyBin),
+  };
+}
+
 const runFrontend = async (b) => {
   if (!Array.prototype.at) {
     Array.prototype.at = function (i) {
@@ -2726,191 +2908,13 @@ const runBackend = async (b, ctx) => {
 
   await processCliArgs();
 
-  const bType = {
-    BIN: 1,
-    BOOL: 2,
-    INT: 3,
-    STR: 4,
-    MAP: 6,
-    LIST: 7,
-
-    V_LINK: 50, //for vertical links (object and his keys: values)
-    H_LINK: 50, //horizontal link
-
-    DELETED: 100,
-
-    TRANSITION: 150, //
-  };
-
-  const bUtil = {
-    intToUint8Array: (int) => {
-
-      if (int < 0 || int > 0xFFFFFFFF) {
-        throw new RangeError("Number is either negative or too large to be represented in 4 bytes");
-      }
-      let arr;
-
-      if (int <= 0xFF) {
-        //1 bytes
-        arr = new Uint8Array(1);
-        arr[0] = int;
-      } else if (int <= 0xFFFF) {
-        //2 bytes
-        arr = new Uint8Array(2);
-        arr[0] = int & 0xFF;
-        arr[1] = (int >> 8) & 0xFF;
-      } else if (int <= 0xFFFFFF) {
-        // 3 bytes
-        arr = new Uint8Array(3);
-        arr[0] = int & 0xFF;
-        arr[1] = (int >> 8) & 0xFF;
-        arr[2] = (int >> 16) & 0xFF;
-      } else {
-        // 4 bytes
-        arr = new Uint8Array(4);
-        arr[0] = int & 0xFF;
-        arr[1] = (int >> 8) & 0xFF;
-        arr[2] = (int >> 16) & 0xFF;
-        arr[3] = (int >> 24) & 0xFF;
-      }
-
-      return arr;
-    },
-    uint8ArrayToInt: (uint8Array) => {
-
-      if (uint8Array instanceof Uint8Array === false) {
-        throw new TypeError('Expected Uint8Array');
-      }
-
-      let int = 0;
-      const length = uint8Array.length;
-
-      for (let i = 0; i < length; i++) {
-        int |= uint8Array[i] << (8 * i);
-      }
-
-      return int;
-    },
-
-    dataToUint8Array: (v) => {
-      if (typeof v === 'string') {
-        return new TextEncoder().encode(v);
-      }
-      if (typeof v === 'number') {
-        return bUtil.intToUint8Array(v);
-      }
-      throw new Error(`invalid type of v [${typeof v}]`);
-    },
-    uint8ArrayToData: (type, arr) => {
-      if (bType.INT === type) {
-        return bUtil.uint8ArrayToInt(arr);
-      }
-      if (bType.STR === type) {
-
-      }
-      //console.log(type, arr);
-    }
-  }
-  class bFile {
-    async init(fName) {
-      this.fd = await fs.open(fName, 'a+');
-    }
-    async read(size, position = 0) {
-      const arr = new Uint8Array(size);
-      await this.fd.read(arr, 0, size, position);
-      return arr;
-    }
-    async readByte(position = 0) {
-      const arr = new Uint8Array(1);
-      await this.fd.read(arr, 0, 1, position);
-      return arr[0];
-    }
-    async write(arr, offset = 0, position = 0) {
-      await this.fd.write(arr, offset, arr.length, position);
-      return arr;
-    }
-    async writeByte(int, position = 0) {
-      const arr = new Uint8Array([int]);
-      await this.fd.write(arr, 0, arr.length, position);
-      return arr;
-    }
-    async truncate(length) {
-      if (!length) {
-        throw new Error('length cannot be empty');
-      }
-      await this.fd.truncate(length);
-    }
-    async close() {
-      await this.fd.close();
-    }
-  }
-  const writeBlock = async (bin, data, position) => {
-
-    let type;
-    if (typeof data === 'number') {
-      type = bType.INT;
-    } else if (typeof data === 'string') {
-      type = bType.STR;
-    }
-    const arr = bUtil.dataToUint8Array(data);
-
-    //write type
-    await bin.writeByte(type, position);
-
-    const bytesCountPosition = position + 1;
-    const bytesCountArr = bUtil.intToUint8Array(arr.length);
-
-    //write size of BodySize integer
-    await bin.writeByte(bytesCountArr.length, bytesCountPosition);
-
-    //write BodySize integer
-    const bodySizePosition = bytesCountPosition + 1;
-    //console.log(bodySizePosition);
-    await bin.write(bytesCountArr, 0, bodySizePosition);
-
-    //write Body
-    await bin.write(arr, 0, bodySizePosition + bytesCountArr.length);
-  }
-
-  const readBlock = async (bin, position) => {
-    const type = await bin.readByte(position);
-    if (!type) throw new Error('type not found at position 0');
-
-    const bytesCountPos = position + 1;
-    const bytesCountOfSize = await bin.readByte(bytesCountPos);
-
-    const sizePos = bytesCountPos + 1;
-    const sizeBin = await bin.read(bytesCountOfSize, sizePos);
-    if (!sizeBin) throw new Error(`size not found at position ${sizePos}`);
-
-    const size = bUtil.uint8ArrayToInt(sizeBin);
-
-    const bodyPos = sizePos + sizeBin.length;
-    const bodyBin = await bin.read(size, bodyPos);
-
-    //const transitionPos = bodyPos + bodyBin.length;
-    //console.log(transitionPos);
-
-    return {
-      type,
-      bytesCountOfSize,
-      sizeBin,
-      size,
-      bodyBin,
-      body: bUtil.uint8ArrayToData(type, bodyBin),
-      transition: null
-    };
-  }
-
-
   const bin = new bFile();
   await bin.init('data');
   //await bin.truncate(3);
+  console.log(await bin.read(30, 0));
 
-
-  await writeBlock(bin, 80333, 0);
-  console.log(await readBlock(bin, 0));
-
+  //await writeBlock(bin, 120333, 0);
+  //console.log(await readBlock(bin, 0));
 
   await bin.close();
 }
