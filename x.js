@@ -2441,11 +2441,12 @@ const bUtil = {
       return bUtil.uint8ArrayToInt(arr);
     }
     if (bType.STR === type) {
-
+      return new TextDecoder().decode(arr);
     }
-    //console.log(type, arr);
+    throw new Error(`invalid type [${type}]`);
   }
 }
+
 class bFile {
   async init(fName) {
     const fs = await import('node:fs/promises');
@@ -2456,12 +2457,7 @@ class bFile {
     await this.fd.read(arr, 0, size, position);
     return arr;
   }
-  async readByte(position = 0) {
-    const arr = new Uint8Array(1);
-    await this.fd.read(arr, 0, 1, position);
-    return arr[0];
-  }
-  async write(arr, offset = 0, position = 0) {
+  async write(arr, position = 0, offset = 0) {
     await this.fd.write(arr, offset, arr.length, position);
     return arr;
   }
@@ -2470,46 +2466,62 @@ class bFile {
     await this.fd.write(arr, 0, arr.length, position);
     return arr;
   }
+  async readByte(position = 0) {
+    const arr = new Uint8Array(1);
+    await this.fd.read(arr, 0, 1, position);
+    return arr[0];
+  }
   async truncate(length) {
     if (!length) {
       throw new Error('length cannot be empty');
     }
     await this.fd.truncate(length);
   }
+  async stat() {
+    return await this.fd.stat();
+  }
   async close() {
     await this.fd.close();
   }
 }
+
 const writeBlock = async (bin, data, position) => {
 
   let type;
+
   if (typeof data === 'number') {
     type = bType.INT;
   } else if (typeof data === 'string') {
     type = bType.STR;
+  } else {
+    throw new Error(`invalid type of data [${typeof data}]`);
   }
-  const arr = bUtil.dataToUint8Array(data);
 
+  const bodyBin = bUtil.dataToUint8Array(data);
   //write type
   await bin.writeByte(type, position);
 
-  const bytesCountPosition = position + 1;
-  const bytesCountArr = bUtil.intToUint8Array(arr.length);
+  const bodySizeBytesPos = position + 1;
+  const bodySizeArr = bUtil.intToUint8Array(bodyBin.length);
 
-  //write size of BodySize integer
-  await bin.writeByte(bytesCountArr.length, bytesCountPosition);
+  //write size of BodySize int
+  await bin.writeByte(bodySizeArr.length, bodySizeBytesPos);
 
-  //write BodySize integer
-  const bodySizePosition = bytesCountPosition + 1;
-  //console.log(bodySizePosition);
-  await bin.write(bytesCountArr, 0, bodySizePosition);
+  //write BodySize int
+  const bodySizePosition = bodySizeBytesPos + 1;
+  await bin.write(bodySizeArr, bodySizePosition);
 
   //write Body
-  await bin.write(arr, 0, bodySizePosition + bytesCountArr.length);
+  const bodyPos = bodySizePosition + bodySizeArr.length;
+  await bin.write(bodyBin, bodyPos);
+
+
+  const lastPos = bodyPos + bodyBin.length;
 
   return {
     type,
-    bodyBin: arr,
+    bodyBin,
+    lastPos,
   };
 }
 
@@ -2529,16 +2541,17 @@ const readBlock = async (bin, position) => {
   const bodyPos = sizePos + sizeBin.length;
   const bodyBin = await bin.read(size, bodyPos);
 
-  //const transitionPos = bodyPos + bodyBin.length;
-  //console.log(transitionPos);
-
   return {
     type,
-    bytesCountOfSize,
-    sizeBin,
-    size,
-    bodyBin,
-    body: bUtil.uint8ArrayToData(type, bodyBin),
+    blockSize: 2 + sizeBin.length + size,
+    body: {
+      sizeByteCount: bytesCountOfSize,
+      sizeBin: sizeBin,
+      size: size,
+      bin: bodyBin,
+      data: bUtil.uint8ArrayToData(type, bodyBin),
+    },
+    lastPos: bodyPos + (bodyBin.length - 1),
   };
 }
 
@@ -2893,7 +2906,6 @@ const runBackend = async (b, ctx) => {
     console.error('UNCAUGHT EXCEPTION', e, e.stack, origin);
     process.exit(1);
   });
-
   const processCliArgs = async () => {
     const args = parseCliArgs([...process.argv]);
 
@@ -2905,15 +2917,32 @@ const runBackend = async (b, ctx) => {
       console.log('Command not found');
     }
   };
-
   await processCliArgs();
 
   const bin = new bFile();
   await bin.init('data');
   //await bin.truncate(3);
-  console.log(await bin.read(30, 0));
+  console.log(await bin.read(25, 0));
 
-  //await writeBlock(bin, 120333, 0);
+  const size = (await bin.stat()).size;
+  let byteCount = 0;
+
+
+  while (byteCount < size) {
+    const block = await readBlock(bin, byteCount);
+    byteCount += block.blockSize;
+
+    console.log(block);
+  }
+
+  //await writeBlock(bin, "string friend", 14);
+  //await writeBlock(bin, 255888777, 7);
+
+  // if (pos >= size) {
+  //   console.log('read of bin file cmpleted');
+  //   return;
+  // }
+
   //console.log(await readBlock(bin, 0));
 
   await bin.close();
