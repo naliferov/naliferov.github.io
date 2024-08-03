@@ -1229,7 +1229,7 @@ const frame = {
 
     topBar.addEventListener('pointerdown', (e) => this.dragAndDrop(e));
 
-    if (!this.q) this.q = Object.create(q);
+    //if (!this.q) this.q = Object.create(q);
 
     // const closeBtn = new this.O({ class: 'closeBtn' });
     // e('>', [closeBtn, top]);
@@ -1598,14 +1598,21 @@ const binDataEditor = {
     this.oShadow.append(container);
     this.container = container;
 
-    const data = await (await fetch('/data')).arrayBuffer();
-
+    const buffer = await (await fetch('/data')).arrayBuffer();
     const bin = new bArr();
-    await bin.init(new Uint8Array(data));
-    //console.log(data);
+    await bin.init(new Uint8Array(buffer));
 
-    const block = await bUtil.readBlock(bin, 0);
-    console.log(block);
+    // const block = await bUtil.readBlock(bin, 0);
+    // console.log(block);
+
+    bUtil.iterateBlocks(bin, async (block) => {
+
+      const blockItem = new Dom;
+      const type = new Dom({ txt: block.type });
+      blockItem.ins(type);
+
+      container.append(blockItem.getDOM());
+    });
 
     //show div with type and content
   }
@@ -1621,12 +1628,11 @@ const bType = {
 
   STYLE: 10,
 
+  LINK: 40, //link
   V_LINK: 50, //for vertical links (object and their keys and values.)
-  H_LINK: 50, //horizontal link
+  H_LINK: 51, //horizontal link
 
   DELETED: 100,
-
-  EXTENDS: 150,
 };
 
 const bUtil = {
@@ -1688,6 +1694,7 @@ const bUtil = {
     }
     throw new Error(`invalid type of v [${typeof v}]`);
   },
+
   uint8ArrayToData: (type, arr) => {
     if (bType.INT === type) {
       return bUtil.uint8ArrayToInt(arr);
@@ -1698,17 +1705,17 @@ const bUtil = {
     throw new Error(`invalid type [${type}]`);
   },
 
-  readBlock: async (bin, position) => {
-    const type = await bin.readByte(position);
+  readBlock: async (bin, pos) => {
+    const type = await bin.readByte(pos);
     if (!type) throw new Error('type not found at position 0');
 
-    const bytesCountPos = position + 1;
+    const bytesCountPos = pos + 1;
     const bytesCountOfSize = await bin.readByte(bytesCountPos);
 
     const sizePos = bytesCountPos + 1;
     const sizeBin = await bin.read(bytesCountOfSize, sizePos);
 
-    if (!sizeBin) throw new Error(`size not found at position ${sizePos}`);
+    if (!sizeBin) throw new Error(`size not found at pos ${sizePos}`);
 
     const size = bUtil.uint8ArrayToInt(sizeBin);
 
@@ -1716,15 +1723,12 @@ const bUtil = {
     const bodyBin = await bin.read(size, bodyPos);
 
     return {
-      type,
-      block: {
-        size: 2 + sizeBin.length + size,
-        pos: position,
-      },
+      pos, type,
+      size: 2 + sizeBin.length + size,
       body: {
         sizeByteCount: bytesCountOfSize,
-        sizeBin: sizeBin,
-        size: size,
+        sizeBin,
+        size,
         bin: bodyBin,
         data: bUtil.uint8ArrayToData(type, bodyBin),
       },
@@ -1772,16 +1776,34 @@ const bUtil = {
   },
 
   iterateBlocks: async (bin, fn) => {
-    const size = (await bin.stat()).size;
+
+    const size = await bin.getSize();
     let byteCount = 0;
 
     while (byteCount < size) {
       const block = await bUtil.readBlock(bin, byteCount);
-      byteCount += block.blockSize;
+      byteCount += block.size;
 
-      console.log(block);
+      if (fn) await fn(block);
     }
   }
+}
+
+const bLinkBlock = {
+  read: async (bin, pos) => {
+    let p = pos;
+
+    const pos1Size = await bin.readByte(++p);
+    const pos1 = await bin.read(pos1Size, ++p);
+
+    p += pos1Size;
+
+    const pos2Size = await bin.readByte(p);
+    const pos2 = await bin.read(pos1Size, ++p);
+  },
+  write: async (bin, data, pos) => {
+
+  },
 }
 
 class bFile {
@@ -1814,8 +1836,8 @@ class bFile {
     }
     await this.fd.truncate(length);
   }
-  async stat() {
-    return await this.fd.stat();
+  async getSize() {
+    return (await this.fd.stat()).size;
   }
   async close() {
     await this.fd.close();
@@ -1846,6 +1868,9 @@ class bArr {
       return;
     }
     return arr[0];
+  }
+  async getSize() {
+    return this.arr.length;
   }
 }
 
@@ -1947,14 +1972,11 @@ const runFrontend = async (b) => {
   const binDataEditorI = Object.create(binDataEditor);
   await binDataEditor.init();
 
-  return;
-
-  //const frameSettingsPath = ['settings', 'openedApps', 'dataEditor'];
   const frameI = Object.create(frame);
   frameI.setB(b);
   await frameI.init();
   frameI.setTitle('Data editor');
-  frameI.setContent(dataEditorI.o);
+  frameI.setContent(binDataEditorI.o);
   // frame.setEventHandler(async (o) => {
   //   const { left, top, width, height } = o;
   //   const set = async (name, v) => {
@@ -1965,8 +1987,7 @@ const runFrontend = async (b) => {
   //   if (width) set('width', width);
   //   if (height) set('height', height);
   // });
-
-  appDOM.append(frameI.o.getDOM());
+  app.ins(frameI.o);
 
   return;
 
@@ -2223,6 +2244,11 @@ const runBackend = async (b, ctx) => {
   await bin.init('data');
   //await bin.truncate(3);
   console.log(await bin.read(25, 0));
+
+
+  await bUtil.iterateBlocks(bin, async (block) => {
+    console.log(block);
+  });
 
   //await writeBlock(bin, "string friend", 14);
   //await writeBlock(bin, 255888777, 7);
