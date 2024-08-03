@@ -2283,13 +2283,7 @@ const run = async () => {
     }
     return crypto.randomUUID();
   });
-
-  if (ctx.rtName === 'browser') {
-    await runFrontend(b);
-    return;
-  }
-
-  await runBackend(b, ctx);
+  ctx.rtName === 'browser' ? await runFrontend(b) : await runBackend(b, ctx);
 };
 
 run();
