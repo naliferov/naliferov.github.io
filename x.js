@@ -1040,7 +1040,7 @@ class Dom {
     this.getDOM().setAttribute(k, v);
     return this;
   }
-  setStyle(x) {
+  setCss(x) {
     const o = this.getDOM();
     for (let p in x) {
       o.style[p] = x[p];
@@ -1195,6 +1195,9 @@ const frame = {
       right: -.5em;
       bottom: -.5em;
     }
+    .frameContainer {
+      padding: 0 5px;
+    }
         `;
     return await this.b.p('doc.mk', { type: 'style', txt: css });
   },
@@ -1223,23 +1226,14 @@ const frame = {
     this.frameTitle = await p('doc.mk', { class: ['frameTitle'], txt: '' });
     topBar.append(this.frameTitle);
 
+    const frameContainer = await p('doc.mk', { class: ['frameContainer'] });
+    this.oShadow.append(frameContainer);
+
     const slot = await p('doc.mk', { type: 'slot' });
     slot.setAttribute('name', 'content');
-    this.oShadow.append(slot);
+    frameContainer.append(slot);
 
     topBar.addEventListener('pointerdown', (e) => this.dragAndDrop(e));
-
-    //if (!this.q) this.q = Object.create(q);
-
-    // const closeBtn = new this.O({ class: 'closeBtn' });
-    // e('>', [closeBtn, top]);
-    // closeBtn.on('click', () => {
-    //     this.view.remove();
-    //     if (this.app.close) {
-    //         this.app.close();
-    //     }
-    //     s.e('appFrame.close', { appFrame: this });
-    // });
 
     const resizeTop = await p('doc.mk', {
       mkApi: true,
@@ -1473,125 +1467,10 @@ const frame = {
   },
 };
 
-export class Header extends Dom {
-  css = `
-    .container {
-      display: flex;
-      font-family: 'Roboto', sans-serif;
-      align-items: center;
-      padding: 10px 0;
-    }
-    .logo {
-      font-size: 23px;
-      font-weight: bold;
-    }
-    .leftMenu {
-      flex-grow: 1;
-    }
-    .btn {
-      color: black;
-      cursor: pointer;
-    }
-    .btn:hover {
-      text-decoration: underline;
-    }
-    .signUp {
-      margin-left: 10px;
-    }
-  `;
-
-  constructor(data = {}) {
-    data.type = 'header';
-
-    super(data);
-    this.attachShadow();
-    this.attachCSS();
-
-    const container = new Dom({ class: 'container' });
-    this.ins(container);
-
-    const logo = new Dom({ class: 'logo', txt: '' });
-    container.ins(logo);
-
-    const leftMenu = new Dom({ class: 'leftMenu' });
-    container.ins(leftMenu);
-
-    const rightMenu = new Dom({ class: 'rightMenu', css: { display: 'flex' } });
-    container.ins(rightMenu);
-
-    const signInBtn = new Dom({
-      type: 'a',
-      class: ['signIn', 'btn'],
-      txt: 'Sign In',
-    });
-    signInBtn.setAttr('href', '/sign/in');
-    rightMenu.ins(signInBtn);
-
-    const signUpBtn = new Dom({
-      type: 'a',
-      class: ['signUp', 'signBtn', 'btn'],
-      txt: 'Sign Up',
-    });
-    signUpBtn.setAttr('href', '/sign/up');
-    rightMenu.ins(signUpBtn);
-  }
-
-  async init() {
-    const b = this.b;
-
-    this.o = await b.p('doc.mk', { type: 'header' });
-    this.oShadow = this.o.attachShadow({ mode: 'open' });
-    //this.oShadow.append(await this.createStyle());
-    //this.oShadow.addEventListener('contextmenu', (e) => this.handleContextmenu(e));
-
-    const container = await b.p('doc.mk', { class: 'container' });
-    this.oShadow.append(container);
-
-    const logo = await b.p('doc.mk', { class: 'logo', txt: 'varcraft' });
-    await b.p('doc.ins', { o1: container, o2: logo });
-  }
-}
-
-const signForm = () => {
-  const act = path === '/sign/in' ? 'Sign In' : 'Sign Up';
-
-  const signForm = new Dom({ class: 'signForm' });
-  app.ins(signForm);
-
-  const signHeader = new Dom({ class: 'header', txt: act });
-  signForm.ins(signHeader);
-
-  const email = new Dom({ type: 'input', class: 'email', txt: '' });
-  signForm.ins(email);
-
-  signForm.ins(new Dom({ type: 'br' }));
-
-  const password = new Dom({ type: 'input', class: 'password', txt: '' });
-  signForm.ins(password);
-
-  signForm.ins(new Dom({ type: 'br' }));
-
-  const btn = new Dom({ type: 'button', class: 'btn', txt: act });
-  signForm.ins(btn);
-
-  btn.on('pointerdown', async (e) => {
-    if (act === 'Sign Up') {
-      // const r = await b.p('x', {
-      //   signUp: {
-      //     email: email.getVal(),
-      //     password: password.getVal(),
-      //   }
-      // });
-      // console.log(r);
-    }
-  });
-}
-
-const binDataEditor = {
+const binEditor = {
   async init() {
     this.o = document.createElement('div');
     this.oShadow = this.o.attachShadow({ mode: 'open' });
-    //this.oShadow.addEventListener('pointerdown', (e) => this.click(e));
 
     const container = document.createElement('div');
     container.className = 'container';
@@ -1602,16 +1481,25 @@ const binDataEditor = {
     const bin = new bArr();
     await bin.init(new Uint8Array(buffer));
 
+
+    const input = document.createElement('input');
+    container.append(input);
+
     // const block = await bUtil.readBlock(bin, 0);
     // console.log(block);
 
     bUtil.iterateBlocks(bin, async (block) => {
 
-      const blockItem = new Dom;
-      const type = new Dom({ txt: block.type });
-      blockItem.ins(type);
+      //add ability to insert just html or txt
+      const css = { display: 'inline' };
 
-      container.append(blockItem.getDOM());
+      const blockDom = new Dom;
+      blockDom.ins(new Dom({ txt: block.type, css }));
+      blockDom.ins(new Dom({ txt: ': ', css }));
+      blockDom.ins(new Dom({ txt: block.body.data, css }));
+      blockDom.ins(new Dom({ type: 'br' }));
+
+      container.append(blockDom.getDOM());
     });
 
     //show div with type and content
@@ -1707,14 +1595,17 @@ const bUtil = {
 
   readBlock: async (bin, pos) => {
     const type = await bin.readByte(pos);
-    if (!type) throw new Error('type not found at position 0');
+    if (!type) throw new Error('type not found at pos 0');
 
-    const bytesCountPos = pos + 1;
-    const bytesCountOfSize = await bin.readByte(bytesCountPos);
+    if (type === bType.LINK) {
+      return await bLink.readBlock(bin, pos);
+    }
 
-    const sizePos = bytesCountPos + 1;
+    const bytesCountOfSizePos = pos + 1;
+    const bytesCountOfSize = await bin.readByte(bytesCountOfSizePos);
+
+    const sizePos = bytesCountOfSizePos + 1;
     const sizeBin = await bin.read(bytesCountOfSize, sizePos);
-
     if (!sizeBin) throw new Error(`size not found at pos ${sizePos}`);
 
     const size = bUtil.uint8ArrayToInt(sizeBin);
@@ -1732,7 +1623,6 @@ const bUtil = {
         bin: bodyBin,
         data: bUtil.uint8ArrayToData(type, bodyBin),
       },
-      lastPos: bodyPos + (bodyBin.length - 1),
     };
   },
 
@@ -1766,12 +1656,9 @@ const bUtil = {
     const bodyPos = bodySizePosition + bodySizeArr.length;
     await bin.write(bodyBin, bodyPos);
 
-    const lastPos = bodyPos + bodyBin.length;
-
     return {
       type,
       bodyBin,
-      lastPos,
     };
   },
 
@@ -1789,22 +1676,17 @@ const bUtil = {
   }
 }
 
-const bLinkBlock = {
-  read: async (bin, pos) => {
-    let p = pos;
-
-    const pos1Size = await bin.readByte(++p);
-    const pos1 = await bin.read(pos1Size, ++p);
-
-    p += pos1Size;
-
-    const pos2Size = await bin.readByte(p);
-    const pos2 = await bin.read(pos1Size, ++p);
+const bLink = {
+  readBlock: async (bin, pos) => {
+    return {
+      pos, type: bType.LINK,
+      size: 2 + sizeBin.length + size,
+      //pos1: await bin.readByte(pos + 1),
+      //pos2: await bin.readByte(pos + 1),
+    }
   },
-  write: async (bin, data, pos) => {
-
-  },
-}
+  createBlock: async (pos1, pos2) => { },
+};
 
 class bFile {
   async init(fName) {
@@ -1959,34 +1841,18 @@ const runFrontend = async (b) => {
   const app = new Dom();
   app.setDOM(appDOM);
 
-  //const header = new Header();
-  //await b.p('doc.ins', { o1: app.dom, o2: header.dom });
-
-  //const appDOM = await b.p('doc.mk', {});
-  //await b.p('doc.ins', { o1: app.dom, o2: header.dom });
-
   // const dataEditorI = Object.create(dataEditor);
   // dataEditorI.setB(b);
   // await dataEditorI.init();
 
-  const binDataEditorI = Object.create(binDataEditor);
-  await binDataEditor.init();
+  const binEditorI = Object.create(binEditor);
+  await binEditor.init();
 
   const frameI = Object.create(frame);
   frameI.setB(b);
   await frameI.init();
   frameI.setTitle('Data editor');
-  frameI.setContent(binDataEditorI.o);
-  // frame.setEventHandler(async (o) => {
-  //   const { left, top, width, height } = o;
-  //   const set = async (name, v) => {
-  //     await b({ set: { path: [...frameSettingsPath, name], v } });
-  //   };
-  //   if (left) set('left', left);
-  //   if (top) set('top', top);
-  //   if (width) set('width', width);
-  //   if (height) set('height', height);
-  // });
+  frameI.setContent(binEditorI.o);
   app.ins(frameI.o);
 
   return;
@@ -2029,7 +1895,6 @@ const runBackend = async (b, ctx) => {
 
   const { promises } = await import('node:fs');
   const fs = promises;
-
   const _ = b.get_();
 
   await b.s('u', () => u);
@@ -2215,6 +2080,18 @@ const runBackend = async (b, ctx) => {
         console.log(`server start on port: [${port}]`),
       );
     },
+    test: () => {
+      console.log('test command executed');
+    },
+    listFiles: async () => {
+      const list = await fs.readdir('./assets/img');
+      let str = '';
+
+      list.forEach((fName) => {
+        str += `<li><img src="/assets/img/${fName}" /></li>`
+      });
+      console.log(str);
+    },
   };
 
   process.on('uncaughtException', (e, origin) => {
@@ -2240,11 +2117,11 @@ const runBackend = async (b, ctx) => {
   };
   await processCliArgs();
 
+  return;
   const bin = new bFile();
   await bin.init('data');
   //await bin.truncate(3);
   console.log(await bin.read(25, 0));
-
 
   await bUtil.iterateBlocks(bin, async (block) => {
     console.log(block);
