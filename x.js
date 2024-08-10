@@ -1579,7 +1579,7 @@ const bUtil = {
     if (typeof v === 'number') {
       return bUtil.intToUint8Array(v);
     }
-    throw new Error(`invalid type of v [${typeof v}]`);
+    throw new Error(`dataToUint8Array invalid type [${typeof v}]`);
   },
 
   uint8ArrayToData: (type, arr) => {
@@ -1589,18 +1589,22 @@ const bUtil = {
     if (bType.STR === type) {
       return new TextDecoder().decode(arr);
     }
-    throw new Error(`invalid type [${type}]`);
+    throw new Error(`uint8ArrayToData invalid type [${type}]`);
   },
 }
 
 const bBlock = {
   read: async (bin, pos) => {
+
+    console.log('read block pos', pos);
+
     const type = await bin.readByte(pos);
     if (!type) throw new Error('type not found at pos 0');
 
     if (type === bType.LINK) {
       return await bLink.read(bin, pos);
     }
+    //if (!bType[]) throw new Error(`unknown type: [${type}]`);
 
     const bytesCountOfSizePos = pos + 1;
     const bytesCountOfSize = await bin.readByte(bytesCountOfSizePos);
@@ -1615,7 +1619,8 @@ const bBlock = {
     const bodyBin = await bin.read(bodySizeInt, bodyPos);
 
     return {
-      pos, type,
+      pos,
+      type,
       size: 2 + sizeBin.length + bodySizeInt,
       body: {
         sizeByteCount: bytesCountOfSize,
@@ -1664,35 +1669,27 @@ const bBlock = {
   }
 }
 
-const iterateBinBlocks = async (bin, fn) => {
-
-  const size = await bin.getSize();
-  let byteCount = 0;
-
-  while (byteCount < size) {
-    const block = await bBlock.read(bin, byteCount);
-    byteCount += block.size;
-
-    if (fn) await fn(block);
-  }
-}
-
 const bLink = {
   read: async (bin, pos) => {
+    console.log('read link pos', pos);
 
-    //const type = await bin.readByte(pos);
+    const type = await bin.readByte(pos);
+    if (type !== bType.LINK) throw new Error(`bLink.read wrong type [${type}]`);
 
     const sizeOfPos1 = await bin.readByte(pos + 1);
-    const posOfPos = pos + 2;
-    const pos1Arr = await bin.read(sizeOfPos1, posOfPos);
+    let posCursor = pos + 2;
+    const pos1Arr = await bin.read(sizeOfPos1, posCursor);
 
-    const sizeOfPos2 = await bin.readByte(posOfPos + pos1Arr.length);
-    console.log(sizeOfPos2);
+    posCursor += pos1Arr.length;
+    const sizeOfPos2 = await bin.readByte(posCursor);
+    const pos2Arr = await bin.read(sizeOfPos2, posCursor + 1);
 
     return {
-      pos, type: bType.LINK,
-      //pos1: await bin.readByte(pos + 1),
-      //pos2: await bin.readByte(pos + 1),
+      pos,
+      type: bType.LINK,
+      size: 3 + pos1Arr.length + pos2Arr.length, //3 bytes for type and size of pos1, and size of pos2
+      pos1: bUtil.uint8ArrayToInt(pos1Arr),
+      pos2: bUtil.uint8ArrayToInt(pos2Arr),
     }
   },
   write: async (bin, pos, posA, posB) => {
@@ -1708,6 +1705,19 @@ const bLink = {
     await bin.writeByte(posArr.length, nextPos);
     await bin.write(posArr, nextPos + 1);
   },
+}
+
+const iterateBinBlocks = async (bin, fn) => {
+
+  const size = await bin.getSize();
+  let byteCount = 0;
+
+  while (byteCount < size) {
+    const block = await bBlock.read(bin, byteCount);
+    byteCount += block.size;
+
+    if (fn) await fn(block);
+  }
 }
 
 class bFile {
@@ -2136,7 +2146,7 @@ const runBackend = async (b, ctx) => {
   let lastPos = 0;
   await iterateBinBlocks(bin, async (block) => {
     if (block.size) {
-      lastPos += block.size;
+      //lastPos += block.size;
     }
     console.log(block);
   });
