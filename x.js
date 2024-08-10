@@ -1516,11 +1516,10 @@ const bType = {
 
   STYLE: 10,
 
-  LINK: 40, //link
-  V_LINK: 50, //for vertical links (object and their keys and values.)
-  H_LINK: 51, //horizontal link
+  LINK: 40,
 
-  DELETED: 100,
+  DELETED_BLOCK: 100,
+  DELETED_LINK: 101,
 };
 
 const bUtil = {
@@ -1592,13 +1591,15 @@ const bUtil = {
     }
     throw new Error(`invalid type [${type}]`);
   },
+}
 
-  readBlock: async (bin, pos) => {
+const bBlock = {
+  read: async (bin, pos) => {
     const type = await bin.readByte(pos);
     if (!type) throw new Error('type not found at pos 0');
 
     if (type === bType.LINK) {
-      return await bLink.readBlock(bin, pos);
+      return await bLink.read(bin, pos);
     }
 
     const bytesCountOfSizePos = pos + 1;
@@ -1608,25 +1609,25 @@ const bUtil = {
     const sizeBin = await bin.read(bytesCountOfSize, sizePos);
     if (!sizeBin) throw new Error(`size not found at pos ${sizePos}`);
 
-    const size = bUtil.uint8ArrayToInt(sizeBin);
+    const bodySizeInt = bUtil.uint8ArrayToInt(sizeBin);
 
     const bodyPos = sizePos + sizeBin.length;
-    const bodyBin = await bin.read(size, bodyPos);
+    const bodyBin = await bin.read(bodySizeInt, bodyPos);
 
     return {
       pos, type,
-      size: 2 + sizeBin.length + size,
+      size: 2 + sizeBin.length + bodySizeInt,
       body: {
         sizeByteCount: bytesCountOfSize,
         sizeBin,
-        size,
+        size: bodySizeInt,
         bin: bodyBin,
         data: bUtil.uint8ArrayToData(type, bodyBin),
       },
     };
   },
 
-  writeBlock: async (bin, data, position) => {
+  write: async (bin, data, position) => {
 
     let type;
 
@@ -1660,33 +1661,54 @@ const bUtil = {
       type,
       bodyBin,
     };
-  },
+  }
+}
 
-  iterateBlocks: async (bin, fn) => {
+const iterateBinBlocks = async (bin, fn) => {
 
-    const size = await bin.getSize();
-    let byteCount = 0;
+  const size = await bin.getSize();
+  let byteCount = 0;
 
-    while (byteCount < size) {
-      const block = await bUtil.readBlock(bin, byteCount);
-      byteCount += block.size;
+  while (byteCount < size) {
+    const block = await bBlock.read(bin, byteCount);
+    byteCount += block.size;
 
-      if (fn) await fn(block);
-    }
+    if (fn) await fn(block);
   }
 }
 
 const bLink = {
-  readBlock: async (bin, pos) => {
+  read: async (bin, pos) => {
+
+    //const type = await bin.readByte(pos);
+
+    const sizeOfPos1 = await bin.readByte(pos + 1);
+    const posOfPos = pos + 2;
+    const pos1Arr = await bin.read(sizeOfPos1, posOfPos);
+
+    const sizeOfPos2 = await bin.readByte(posOfPos + pos1Arr.length);
+    console.log(sizeOfPos2);
+
     return {
       pos, type: bType.LINK,
-      size: 2 + sizeBin.length + size,
       //pos1: await bin.readByte(pos + 1),
       //pos2: await bin.readByte(pos + 1),
     }
   },
-  createBlock: async (pos1, pos2) => { },
-};
+  write: async (bin, pos, posA, posB) => {
+    await bin.writeByte(bType.LINK, pos);
+
+    let posArr = bUtil.intToUint8Array(posA);
+    await bin.writeByte(posArr.length, pos + 1);
+    await bin.write(posArr, pos + 2);
+
+    const nextPos = pos + 2 + posArr.length;
+
+    posArr = bUtil.intToUint8Array(posB);
+    await bin.writeByte(posArr.length, nextPos);
+    await bin.write(posArr, nextPos + 1);
+  },
+}
 
 class bFile {
   async init(fName) {
@@ -1733,17 +1755,8 @@ class bArr {
   async read(size, position = 0) {
     return this.arr.slice(position, position + size);
   }
-  async write(arr, position = 0, offset = 0) {
-    const target = this.arr;
-    if (position < 0 || position > target.length) {
-      throw new RangeError('Position is out of bounds');
-    }
-  }
-  async writeByte(int, position = 0) {
-    //const newArr = new Uint8Array([int]);
-    //await this.arr.write(arr, 0, arr.length, position);
-    //return newArr;
-  }
+  async write(arr, position = 0, offset = 0) { }
+  async writeByte(int, position = 0) { }
   async readByte(position = 0) {
     const arr = this.arr.slice(position, position + 1);
     if (arr.length === 0) {
@@ -1755,7 +1768,6 @@ class bArr {
     return this.arr.length;
   }
 }
-
 
 const runFrontend = async (b) => {
   if (!Array.prototype.at) {
@@ -2117,15 +2129,22 @@ const runBackend = async (b, ctx) => {
   };
   await processCliArgs();
 
-  return;
   const bin = new bFile();
-  await bin.init('data');
+  await bin.init('./data/data');
   //await bin.truncate(3);
-  console.log(await bin.read(25, 0));
 
-  await bUtil.iterateBlocks(bin, async (block) => {
+  let lastPos = 0;
+  await iterateBinBlocks(bin, async (block) => {
+    if (block.size) {
+      lastPos += block.size;
+    }
     console.log(block);
   });
+
+  //console.log(lastPos);
+  //bin.truncate(30);
+
+  //await bLink.write(bin, 30, 0, 14);
 
   //await writeBlock(bin, "string friend", 14);
   //await writeBlock(bin, 255888777, 7);
