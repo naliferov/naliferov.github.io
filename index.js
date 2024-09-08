@@ -27,18 +27,73 @@ export const parseCliArgs = (cliArgs) => {
   return args;
 };
 export const getDateTime = () => {
-  const d = new Date();
-
+  const d = new Date;
   let year = d.getFullYear();
   let month = ('0' + (d.getMonth() + 1)).slice(-2); // Months are zero-based
   let day = ('0' + d.getDate()).slice(-2);
   const hours = ('0' + d.getHours()).slice(-2);
   const minutes = ('0' + d.getMinutes()).slice(-2);
   const seconds = ('0' + d.getSeconds()).slice(-2);
-
   return (
     year + '-' + month + '-' + day + '_' + hours + ':' + minutes + ':' + seconds
   );
+};
+
+export const xFactory = () => {
+
+  const xInstance = {
+    f: {},
+    async p(event, data) {
+
+      if (typeof data !== 'function') {
+        const dataProxy = new Proxy(function () { }, {
+          get(obj, prop) {
+            if (prop === 'p') return (...args) => xInstance.p(...args);
+            if (prop === 's') return (...args) => xInstance.s(...args);
+            if (prop === 'toJSON') return () => data;
+
+            return data[prop];
+          },
+          set(obj, prop, value) {
+            data[prop] = value
+            return true
+          },
+          apply(t, thisArg, ...args) {
+            return xInstance.p('x', ...args);
+          },
+        });
+
+        return await this.f[event](dataProxy);
+      }
+
+      return await this.f[event](data);
+    },
+    async s(e, f) {
+      this.f[e] = f;
+    },
+    async x(data) {
+      return this.p('x', data);
+    },
+  };
+
+  const xProxy = new Proxy(function () { }, {
+    get(t, p) {
+      return xInstance[p];
+    },
+    apply(t, thisArg, args) {
+      return xInstance.p('x', args[0]);
+    },
+  });
+
+  return xProxy
+}
+
+export const u = async (x) => {
+  if (x.set) return await set(x);
+  if (x.get) return await get(x);
+  if (x.del) return await del(x);
+  if (x.getHtml) return await getHtml(x);
+  if (x.signUp) return await signUp(x);
 };
 
 const queue = {
@@ -65,59 +120,9 @@ const queue = {
   },
 };
 
-export const b = {
-  f: {},
-  set_(_) {
-    this._ = _;
-  },
-  get_() {
-    return this._;
-  },
-  async p(e, d) {
-    const inject = {
-      _: this._,
-      b: this,
-    };
-    return await this.f[e]({ ...d, ...inject });
-  },
-  async s(e, f) {
-    this.f[e] = f;
-  },
-  async x(d) {
-    return this.p('x', d);
-  },
-};
-
-export const busFactory = () => {
-  const _ = Symbol();
-
-  const bus = Object.create(b);
-  bus.set_(_);
-  //bus.setExec(X(_));
-
-  const proxy = new Proxy(function () { }, {
-    get(t, p) {
-      return bus[p];
-    },
-    apply(t, thisArg, args) {
-      return bus.p('x', args[0]);
-    },
-  });
-
-  return proxy;
-};
-
-export const u = async (x) => {
-  if (x.set) return await set(x);
-  if (x.get) return await get(x);
-  if (x.del) return await del(x);
-  if (x.getHtml) return await getHtml(x);
-  if (x.signUp) return await signUp(x);
-};
-
 const getHtml = async (x) => {
-  const { b } = x[x._];
-  const { mtimeMs } = await b.p('fs', { stat: { path: x.jsFileName } });
+
+  const { mtimeMs } = await x.b.p('fs', { stat: { path: x.jsFilename } });
 
   return {
     bin: `
@@ -140,7 +145,7 @@ const getHtml = async (x) => {
   user-select: none;
 }
 </style>
-<script type="module" src="/${x.jsFileName}?${mtimeMs}"></script>
+<script type="module" src="/${x.jsFilename}?${mtimeMs}"></script>
 </body>
 </html>
     `,
@@ -152,8 +157,7 @@ const set = async (x) => {
   const set = { ...x.set, bin: x.bin };
 
   const { type, id, path, k, ok, v, bin, binName, repoName } = set;
-  const { b } = x[x._];
-  const _ = await b.p('get_');
+  const b = x.b;
 
   if (v && v.i) delete v.i;
 
@@ -341,13 +345,12 @@ const set = async (x) => {
 };
 
 const get = async (x) => {
-  let { id, subIds, path, depth, getMeta, useRepo, repoName } = x.get;
-  const { b } = x[x._];
+  let { id, subIds, path, depth, getMeta, useRepo, repoName, getAll } = x.get;
 
+  if (getAll) return await x.p('repo', { getAll });
   if (id) {
-    if (useRepo) return await b.p('repo', { get: { id }, repoName });
-
-    return await fillVar({ b, id, subIds: new Set(subIds), depth, getMeta });
+    //if (useRepo) return await b.p('repo', { get: { id }, repoName });
+    return await fillVar({ x, id, subIds: new Set(subIds), depth, getMeta });
   }
 
   if (path) {
@@ -358,8 +361,7 @@ const get = async (x) => {
     }
 
     const pathSet = await createSet({
-      _,
-      b,
+      x,
       path,
       getMeta,
       repoName,
@@ -372,18 +374,16 @@ const get = async (x) => {
 
     if (useRepo) return v;
 
-    return await fillVar({ b, v, depth, getMeta });
+    return await fillVar({ x, v, depth, getMeta });
   }
 };
 
 const del = async (x) => {
   const { path, id, k, ok } = x.del;
-  const { b } = x[x._];
-  const _ = await b.p('get_');
 
   //DELETE KEY IN MAP with subVars
   if (id && k) {
-    const v = await b.x({ get: { id, useRepo: true } });
+    const v = await x({ get: { id, useRepo: true } });
     if (!v) return { msg: 'v not found' };
     if (!v.m && !v.l) return { msg: 'v is not map and not list' };
 
@@ -588,7 +588,7 @@ export const it = async (v, cb) => {
   }
 };
 export const fillVar = async (x) => {
-  const { b, id, subIds, getMeta, depth = 1 } = x;
+  const { b, id, subIds, getMeta, depth = 0 } = x;
   let { v } = x;
 
   if (!v && id) {
@@ -681,7 +681,7 @@ export const prepareForTransfer = (v) => {
 
 //TRANSPORT
 export const httpHandler = async (x) => {
-  const { b, runtimeCtx, rq, fs } = x;
+  const { b, runtimeCtx, rq, fs, jsFileName } = x;
   const ctx = {
     rq,
     headers: rq.headers,
@@ -700,47 +700,44 @@ export const httpHandler = async (x) => {
     };
   }
 
-  if (fs) {
-    const r = await httpGetFile({ ctx, fs });
-    if (r.file) {
-      return httpMkResp({ v: r.file, mime: r.mime, runtimeCtx, isBin: true });
-    }
-    if (r.fileNotFound) {
-      return httpMkResp({ code: 404, v: 'File not found', runtimeCtx });
-    }
+  const r = await httpGetFile({ ctx, fs });
+  if (r.file) {
+    return httpMkResp({ v: r.file, mime: r.mime, isBin: true });
+  }
+  if (r.fileNotFound) {
+    return httpMkResp({ code: 404, v: 'File not found' });
   }
 
-  const body = await httpGetBody({ ctx, runtimeCtx });
+  const body = await httpGetBody({ ctx });
   let msg = body ?? query;
+
   if (msg.err) {
-    console.log('msg.err', msg.err);
-    return httpMkResp({ v: 'error processing rq', runtimeCtx });
+    console.log('if (msg.err)', msg.err);
+    return httpMkResp({ v: 'error processing rq' });
   }
 
   const xHeader = ctx.headers.get('x');
   if (msg.bin && xHeader) {
     msg = { bin: msg.bin, ...JSON.parse(xHeader) };
-
-    if (runtimeCtx.rtName === 'deno') {
-      msg.bin = new runtimeCtx.Buffer(msg.bin);
-    }
   }
+
   if (Object.keys(msg).length < 1) {
     msg.getHtml = true;
-    msg.jsFileName = runtimeCtx.fileName;
+    msg.jsFilename = runtimeCtx.filename;
   }
 
-  const o = await b.p('x', msg);
-  if (!o) return httpMkResp({ v: 'Default response', runtimeCtx });
+  msg.b = b;
+  const o = await b(msg);
+  if (!o) return httpMkResp({ v: 'Default response' });
 
   if (o.bin && o.isHtml) {
     const { bin, isHtml } = o;
     const mime = isHtml ? 'text/html' : null;
-    return httpMkResp({ v: bin, isBin: bin, mime, runtimeCtx });
+    return httpMkResp({ v: bin, isBin: bin, mime });
   }
-  return httpMkResp({ v: o, runtimeCtx });
+  return httpMkResp({ v: o });
 };
-const httpGetBody = async ({ ctx, runtimeCtx, limitMb = 12 }) => {
+const httpGetBody = async ({ ctx, limitMb = 12 }) => {
   let limit = limitMb * 1024 * 1024;
   const rq = ctx.rq;
   const readAsJson = ctx.headers.get('content-type') === 'application/json';
@@ -780,7 +777,9 @@ const httpGetBody = async ({ ctx, runtimeCtx, limitMb = 12 }) => {
     });
     rq.on('end', () => {
       let msg = {};
-      if (b.length > 0) msg.bin = runtimeCtx.Buffer.concat(b);
+      if (b.length > 0) msg.bin = Buffer.concat(b);
+
+      //console.log('body parse', b.length)
 
       if (readAsJson) {
         try {
@@ -821,11 +820,11 @@ const httpGetFile = async ({ ctx, fs }) => {
     return { fileNotFound: true };
   }
 };
-const httpMkResp = ({ runtimeCtx, code = 200, mime, v, isBin }) => {
+const httpMkResp = ({ code = 200, mime, v, isBin }) => {
   const send = (v, typeHeader) => {
     const headers = { 'content-type': typeHeader };
     try {
-      return new runtimeCtx.Response(v, { status: code, headers });
+      return new Response(v, { status: code, headers });
     } catch (e) {
       console.log('err sending response', e);
     }
@@ -1076,13 +1075,14 @@ class Dom {
   }
 }
 
-const docMk = (d, x) => {
-  const { id, mkApi, type, txt, events, css } = x;
+const docMk = (x) => {
+  const { id, mkApi, type, txt, html, events, css } = x;
 
   if (mkApi) return new Dom(x);
 
-  const o = d.createElement(type || 'div');
+  const o = document.createElement(type || 'div');
   if (txt) o.innerText = txt;
+  if (html) o.innerHTML = html;
   if (id) o.id = id;
 
   const classD = x['class'];
@@ -1124,7 +1124,6 @@ const frame = {
     }
     .frame {
         position: absolute;
-        /*top: 30px;*/
         overflow: hidden;
     }
     /* this create small glitches when after start and drag window */
@@ -1521,17 +1520,17 @@ const binEditor = {
   }
 };
 
-const runFrontend = async (b) => {
+const runFrontend = async (X) => {
+
+  globalThis.x = X;
+
   if (!Array.prototype.at) {
     Array.prototype.at = function (i) {
       return i < 0 ? this[this.length + i] : this[i];
     };
   }
 
-  const _ = b.get_();
-
-  globalThis.vc = b;
-  await b.s('getUniqIdForDom', async () => {
+  await X.s('getUniqIdForDom', async () => {
     const getRandomLetter = () => {
       const alphabet = 'abcdefghijklmnopqrstuvwxyz';
       const randomIndex = Math.floor(Math.random() * alphabet.length);
@@ -1540,33 +1539,33 @@ const runFrontend = async (b) => {
     const id = await b.p('getUniqId');
     return id.replace(/^[0-9]/, getRandomLetter());
   });
-  await b.s('x', async (x) => {
+  await X.s('x', async (x) => {
     if (x.repo === 'idb') {
       if (x.set) await idb.set(x.set);
       if (x.get) return await idb.get(x.get);
       return;
     }
-    return await b.p('port', x);
+    return await x.p('port', x);
   });
-  await b.s('port', async (x) => {
+  await X.s('port', async (x) => {
     let headers = {};
-    if (x.set && x.set.v instanceof ArrayBuffer) {
-      const v = x.set.v;
-      delete x.set.v;
-      headers.x = JSON.stringify(x);
-      x = v;
-    }
+    // if (x.set && x.set.v instanceof ArrayBuffer) {
+    //   const v = x.set.v;
+    //   delete x.set.v;
+    //   headers.x = JSON.stringify(x);
+    //   x = v;
+    // }
 
     const { data } = await new HttpClient().post('/', x, headers);
     return data;
   });
-  await b.s('doc.mk', async (x) => docMk(doc, x));
-  await b.s('doc.on', async (x) => {
+  await X.s('doc.mk', async (x) => docMk(x));
+  await X.s('doc.on', async (x) => {
     const { o, e, f } = x;
     o.addEventListener(e, f);
   });
-  await b.s('doc.get', async (x) => doc.getElementById(x.id));
-  await b.s('doc.ins', async (x) => {
+  await X.s('doc.get', async (x) => doc.getElementById(x.id));
+  await X.s('doc.ins', async (x) => {
     const { o1, o2 } = x;
 
     let first;
@@ -1585,10 +1584,10 @@ const runFrontend = async (b) => {
       second = await b.p('doc.mk', o2);
     }
 
-    first.appendChild(second);
+    first.append(second);
   });
-  await b.s('doc.mv', async (x) => { });
-  await b.s('doc.getSize', async (x) => {
+  await X.s('doc.mv', async (x) => { });
+  await X.s('doc.getSize', async (x) => {
     const { o } = x;
     return getSize(o);
   });
@@ -1596,28 +1595,76 @@ const runFrontend = async (b) => {
   const idb = new IndexedDb();
   await idb.open();
 
-  //BUILD APP
-  const doc = globalThis.document;
+  const app = await docMk({ id: 'app' });
+  document.body.append(app);
 
-  const appDOM = await b.p('doc.mk', { id: 'app' });
-  doc.body.append(appDOM);
+  //render persistent html elements
 
-  const app = new Dom();
-  app.setDOM(appDOM);
+  const saveDom = async (dom) => {
+    const t = dom
+    const data = { html: t.innerHTML }
 
-  // const dataEditorI = Object.create(dataEditor);
-  // dataEditorI.setB(b);
-  // await dataEditorI.init();
+    const css = {}
+    if (t.style.width) {
+      css.width = t.style.width
+    }
+    if (Object.keys(css).length > 0) {
+      data.css = css
+    }
 
-  const binEditorI = Object.create(binEditor);
-  await binEditor.init();
+    const attributes = {}
+    if (t.getAttribute('contenteditable')) {
+      attributes.contenteditable = true
+    }
+    if (Object.keys(attributes).length > 0) {
+      data.attributes = attributes
+    }
 
-  const frameI = Object.create(frame);
-  frameI.setB(b);
-  await frameI.init();
-  frameI.setTitle('Data editor');
-  frameI.setContent(binEditorI.o);
-  app.ins(frameI.o);
+    if (t.id) {
+      await X({ set: { id: t.id, v: data } })
+    }
+  }
+
+  // const div = docMk({
+  //   html: 'some div',
+  //   css: {
+  //     width: 'fit-content'
+  //   }
+  // })
+  //div.setAttribute('contenteditable', 'true');
+  //app.append(div);
+  //div.addEventListener('input', async (event) => saveDom(event.target));
+
+  const DOMs = await X({ get: { getAll: {} } })
+
+  console.log(DOMs)
+  // for (let i of DOMs) {
+  //   const { id, html, css, attributes } = i
+  //   console.log(i);
+  //   const dom = docMk({ id, html, css, attributes })
+  //   app.append(dom)
+  // }
+
+  // console.log(data)
+
+
+  //const app = new Dom();
+  //app.setDOM(appDOM);
+
+  // const dataEditorObject = Object.create(dataEditor);
+  // dataEditorObject.setB(b);
+  // await dataEditorObject.init();
+
+  //const binEditorI = Object.create(binEditor);
+  //await binEditor.init();
+
+  //const frameI = Object.create(frame);
+  //frameI.setB(b);
+  //await frameI.init();
+
+  //frameI.setTitle('Data editor');
+  //frameI.setContent(binEditorI.o);
+  //app.ins(frameI.o);
 
   return;
 
@@ -1654,18 +1701,13 @@ const runFrontend = async (b) => {
   window.onkeydown = (e) => dataEditor.keydown(e);
 };
 
-const runBackend = async (b, ctx) => {
-  ctx.fileName = process.argv[1].split('/').at(-1);
+const runBackend = async (b) => {
 
   const { promises } = await import('node:fs');
   const fs = promises;
-  const _ = b.get_();
 
-  await b.s('u', () => u);
-  await b.s('x', async (x) => {
-    const u = await b.p('u');
-    return await u(x);
-  });
+  await b.s('x', async (x) => await u(x));
+
   await b.s('get_', () => _);
   await b.s('getUniqId', () => crypto.randomUUID());
   await b.s('sh', async (x) => {
@@ -1695,10 +1737,18 @@ const runBackend = async (b, ctx) => {
       return await b.p('fs', { set: { path, v, format } });
     }
     if (x.get) {
-      const { id, format = 'json' } = x.get;
-      const path = `${statePath}/${id}`;
-
-      return b.p('fs', { get: { path, format } });
+      const { id, format = 'json' } = x.get
+      const path = `${statePath}/${id}`
+      return b.p('fs', { get: { path, format } })
+    }
+    if (x.getAll) {
+      const list = await b.p('fs', { readdir: { path: statePath } });
+      const r = []
+      for (let i of list) {
+        if (i === '.gitignore') continue;
+        r.push(await b.p('fs', { get: { path: `${statePath}/${i}`, format: 'json' } }));
+      }
+      return r
     }
     if (x.del) {
       const { id } = x.del;
@@ -1706,31 +1756,37 @@ const runBackend = async (b, ctx) => {
 
       return b.p('fs', { del: { path } });
     }
+
   });
   await b.s('fs', async (x) => {
-    if (x.set) {
-      const { path, v, format } = x.set;
+    try {
 
-      const data = format === 'json' ? JSON.stringify(v) : v;
-      return await fs.writeFile(path, data);
-    }
-    if (x.get) {
-      const { path, format } = x.get;
+      if (x.set) {
+        const { path, v, format } = x.set;
 
-      try {
+        const data = format === 'json' ? JSON.stringify(v) : v;
+        return await fs.writeFile(path, data);
+      }
+      if (x.get) {
+        const { path, format } = x.get;
         const data = await fs.readFile(path);
         return format === 'json' ? JSON.parse(data) : data;
-      } catch (e) {
-        console.log(e.message);
       }
-    }
-    if (x.del) {
-      const { path } = x.del;
-      return await fs.unlink(path);
-    }
-    if (x.stat) {
-      const { path } = x.stat;
-      return await fs.stat(path);
+      if (x.del) {
+        const { path } = x.del;
+        return await fs.unlink(path);
+      }
+      if (x.stat) {
+        const { path } = x.stat;
+        return await fs.stat(path);
+      }
+      if (x.readdir) {
+        const { path } = x.readdir;
+        return await fs.readdir(path);
+      }
+
+    } catch (e) {
+      console.log(e);
     }
   });
   await b.s('state.import', async (x) => {
@@ -1750,12 +1806,6 @@ const runBackend = async (b, ctx) => {
     const varIds = await getVarIds({ b, v });
 
     for (let i of varIds) fSet.delete(i);
-
-    // for (let file of fSet) {
-    //   if (file === 'u') continue;
-    //   await b.p('fs', { del: { path: `./state/${file}` } });
-    // }
-
     console.log('files that not exists in varIds', fSet);
   });
 
@@ -1811,25 +1861,18 @@ const runBackend = async (b, ctx) => {
     'state.export': async (arg) => await b.p('state.export'),
     'state.validate': async (arg) => await b.p('state.validate'),
     'server.start': async (arg) => {
-      const port = arg[1] || 8080;
-      const hostname = '0.0.0.0';
-      const ctx = arg[_].ctx;
-      ctx.Buffer = Buffer;
-      ctx.Response = Response;
-      ctx.Uint8Array = Uint8Array;
+      const port = arg[1] || 8080
+      const server = (await import('node:http')).createServer({ requestTimeout: 30000 })
 
-      const x = {};
-      x.server = (await import('node:http')).createServer({
-        requestTimeout: 30000,
-      });
-      x.server.on('request', async (rq, rs) => {
+      server.on('request', async (rq, rs) => {
         rq.on('error', (e) => {
           rq.destroy();
           console.log('request no error', e);
-        });
+        })
+
         try {
-          const r = await httpHandler({ b, runtimeCtx: ctx, rq, fs });
-          const v = new ctx.Uint8Array(await r.arrayBuffer());
+          const r = await httpHandler({ b, runtimeCtx: arg.ctx, rq, fs });
+          const v = new Uint8Array(await r.arrayBuffer());
 
           rs.writeHead(r.status, Object.fromEntries(r.headers)).end(v);
         } catch (e) {
@@ -1839,10 +1882,10 @@ const runBackend = async (b, ctx) => {
             'content-type': 'text/plain; charset=utf-8',
           }).end(m);
         }
-      });
-      x.server.listen(port, () =>
+      })
+      server.listen(port, () =>
         console.log(`server start on port: [${port}]`),
-      );
+      )
     },
     test: () => {
       console.log('test command executed');
@@ -1870,8 +1913,7 @@ const runBackend = async (b, ctx) => {
   });
   const processCliArgs = async () => {
     const args = parseCliArgs([...process.argv]);
-
-    args[_] = { ctx };
+    args.ctx = { filename: process.argv[1].split('/').at(-1) };
 
     if (e[args[0]]) {
       console.log((await e[args[0]](args)) ?? '');
@@ -1881,32 +1923,31 @@ const runBackend = async (b, ctx) => {
   };
   await processCliArgs();
 
-  const { bFile, iterateBinBlocks } = await import('./mod/bin.js');
+  // const { bFile, iterateBinBlocks } = await import('./mod/bin.js');
+  // const bin = new bFile();
+  // await bin.init('./data/data');
+  // //await bin.truncate(30);
 
-  const bin = new bFile();
-  await bin.init('./data/data');
-  //await bin.truncate(30);
+  // let lastPos = 0;
+  // await iterateBinBlocks(bin, async (block) => {
+  //   if (block.size) {
+  //     lastPos += block.size;
+  //   }
+  //   console.log(block);
+  // });
+  // console.log('lastPos', lastPos);
 
-  let lastPos = 0;
-  await iterateBinBlocks(bin, async (block) => {
-    if (block.size) {
-      lastPos += block.size;
-    }
-    console.log(block);
-  });
-  console.log('lastPos', lastPos);
-
-  await bin.close();
+  // await bin.close();
 }
 
 //BACKEND
 const run = async () => {
-  const ctx = {};
-  if (globalThis.Window) ctx.rtName = 'browser';
-  else ctx.rtName = 'node';
+  const ctx = {}
+  if (globalThis.Window) ctx.rtName = 'browser'
+  else ctx.rtName = 'node'
 
-  const b = busFactory();
-  await b.s('getUniqId', () => {
+  const x = xFactory()
+  await x.s('getUniqId', () => {
     if (!window.crypto || !window.crypto.randomUUID) {
       return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(
         /[xy]/g,
@@ -1919,7 +1960,7 @@ const run = async () => {
     }
     return crypto.randomUUID();
   });
-  ctx.rtName === 'browser' ? await runFrontend(b) : await runBackend(b, ctx);
+  ctx.rtName === 'browser' ? await runFrontend(x) : await runBackend(x, ctx);
 };
 
 run();
