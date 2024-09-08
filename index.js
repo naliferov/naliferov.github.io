@@ -44,29 +44,8 @@ export const xFactory = () => {
   const xInstance = {
     f: {},
     async p(event, data) {
-
-      if (typeof data !== 'function') {
-        const dataProxy = new Proxy(function () { }, {
-          get(obj, prop) {
-            if (prop === 'p') return (...args) => xInstance.p(...args);
-            if (prop === 's') return (...args) => xInstance.s(...args);
-            if (prop === 'toJSON') return () => data;
-
-            return data[prop];
-          },
-          set(obj, prop, value) {
-            data[prop] = value
-            return true
-          },
-          apply(t, thisArg, ...args) {
-            return xInstance.p('x', ...args);
-          },
-        });
-
-        return await this.f[event](dataProxy);
-      }
-
-      return await this.f[event](data);
+      const dataObj = typeof data === 'function' ? data : createDataProxy(data);
+      return await this.f[event](dataObj);
     },
     async s(e, f) {
       this.f[e] = f;
@@ -74,7 +53,27 @@ export const xFactory = () => {
     async x(data) {
       return this.p('x', data);
     },
-  };
+  }
+
+  const createDataProxy = (data) => {
+    const dataProxy = new Proxy(function () { }, {
+      get(t, prop) {
+        if (prop === 'p') return (...args) => xInstance.p(...args);
+        if (prop === 's') return (...args) => xInstance.s(...args);
+        if (prop === 'toJSON') return () => data;
+
+        return data[prop];
+      },
+      set(t, prop, value) {
+        data[prop] = value
+        return true
+      },
+      apply(t, thisArg, ...args) {
+        return xInstance.p('x', ...args);
+      },
+    });
+    return dataProxy;
+  }
 
   const xProxy = new Proxy(function () { }, {
     get(t, p) {
@@ -123,35 +122,20 @@ const queue = {
 const getHtml = async (x) => {
 
   const { mtimeMs } = await x.b.p('fs', { stat: { path: x.jsFilename } });
-
   return {
     bin: `
 <!DOCTYPE html>
 <html>
 <head>
-    <title>varcraft</title>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1"/>
-    <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&family=Roboto:wght@400;700&display=swap" rel="stylesheet">
 </head>
-<body>
-<style>
- .noselect {
-  -webkit-touch-callout: none;
-  -webkit-user-select: none;
-  -khtml-user-select: none;
-  -moz-user-select: none;
-  -ms-user-select: none;
-  user-select: none;
-}
-</style>
-<script type="module" src="/${x.jsFilename}?${mtimeMs}"></script>
-</body>
+<body><script type="module" src="/${x.jsFilename}?${mtimeMs}"></script></body>
 </html>
     `,
     isHtml: true,
   };
-};
+}
 
 const set = async (x) => {
   const set = { ...x.set, bin: x.bin };
@@ -342,7 +326,7 @@ const set = async (x) => {
       return setPath.at(-1);
     }
   }
-};
+}
 
 const get = async (x) => {
   let { id, subIds, path, depth, getMeta, useRepo, repoName, getAll } = x.get;
@@ -376,7 +360,7 @@ const get = async (x) => {
 
     return await fillVar({ x, v, depth, getMeta });
   }
-};
+}
 
 const del = async (x) => {
   const { path, id, k, ok } = x.del;
@@ -412,18 +396,18 @@ const del = async (x) => {
         v.l = v.l.filter((currentK) => currentK !== k);
       }
 
-      await b({ set: { id, v } });
+      await x({ set: { id, v } });
     }
 
     return { id, k };
   }
 
   //DELETE BY ID
-  if (id && id !== 'root') return await b.p('repo', { del: { id } });
+  if (id && id !== 'root') return await x.p('repo', { del: { id } });
 
   //DELETE BY PATH
   if (path) {
-    const set = await createSet({ _, b, path, isNeedStopIfVarNotFound: true });
+    const set = await createSet({ x, path, isNeedStopIfVarNotFound: true });
 
     if (!set || set.length < 2) return { msg: 'var set not found' };
 
@@ -439,19 +423,20 @@ const del = async (x) => {
       return;
     }
 
-    const isDelWithSubVars = await delWithSubVars({ _, b, v });
+    const isDelWithSubVars = await delWithSubVars({ x, v });
     if (isDelWithSubVars) {
       if (isMap) {
         delete parentV.m[k];
         parentV.o = parentV.o.filter((currentK) => currentK !== k);
 
-        await b({ set: { id: parentV[_].id, v: parentV } });
+        await x({ set: { id: parentV[_].id, v: parentV } });
       } else if (isList) {
         console.log('isList', v);
       }
     }
   }
-};
+}
+
 const signUp = async (x) => {
   const { email, password } = x.signUp;
   const { b } = x[x._];
@@ -483,7 +468,8 @@ const signUp = async (x) => {
   await b({ set: { id: users[_].id, v: users } });
 
   return { email, password };
-};
+}
+
 const delWithSubVars = async (x) => {
   const { _, b, v } = x;
   const varIds = await getVarIds({ b, v });
@@ -501,9 +487,9 @@ const delWithSubVars = async (x) => {
   console.log('varIds for del', varIds);
 
   return true;
-};
+}
 
-export const createSet = async (x) => {
+const createSet = async (x) => {
   const { _, b, path, isNeedStopIfVarNotFound } = x;
   const pathArr = [...path];
   const type = x.type || 'v';
@@ -552,7 +538,7 @@ export const createSet = async (x) => {
   }
 
   return set;
-};
+}
 
 const mkvar = async (b, type) => {
   const _ = await b.p('get_');
@@ -572,9 +558,9 @@ const mkvar = async (b, type) => {
   else throw new Error(`Unknown type [${type}]`);
 
   return v;
-};
+}
 
-export const it = async (v, cb) => {
+const it = async (v, cb) => {
   if (v.l) {
     for (let k = 0; k < v.l.length; k++) {
       await cb({ parent: v.l, k, v: v.l[k] });
@@ -586,8 +572,9 @@ export const it = async (v, cb) => {
       await cb({ parent: v.m, k, v: v.m[k] });
     }
   }
-};
-export const fillVar = async (x) => {
+}
+
+const fillVar = async (x) => {
   const { b, id, subIds, getMeta, depth = 0 } = x;
   let { v } = x;
 
@@ -627,9 +614,9 @@ export const fillVar = async (x) => {
   }
 
   return v;
-};
+}
 
-export const getVarIds = async (x) => {
+const getVarIds = async (x) => {
   const { b, v } = x;
 
   const ids = [];
@@ -655,7 +642,7 @@ export const getVarIds = async (x) => {
   await getIds(v);
 
   return ids;
-};
+}
 
 export const getType = (v) => {
   if (v.b) return 'b';
@@ -666,7 +653,7 @@ export const getType = (v) => {
 };
 
 export const prepareForTransfer = (v) => {
-  const d = {};
+  const d = {}
 
   if (v.b) d.b = v.b;
   if (v.v) d.v = v.v;
@@ -676,10 +663,9 @@ export const prepareForTransfer = (v) => {
   if (v.f) d.f = v.f;
   if (v.x) d.x = v.x;
 
-  return d;
-};
+  return d
+}
 
-//TRANSPORT
 export const httpHandler = async (x) => {
   const { b, runtimeCtx, rq, fs, jsFileName } = x;
   const ctx = {
@@ -920,8 +906,6 @@ export class HttpClient {
   }
 }
 
-// FRONTEND //
-
 export class IndexedDb {
   async open() {
     return new Promise((resolve, reject) => {
@@ -1076,21 +1060,22 @@ class Dom {
 }
 
 const docMk = (x) => {
-  const { id, mkApi, type, txt, html, events, css } = x;
+  const { mkApi, id, type, txt, html, events, css, attributes } = x;
 
   if (mkApi) return new Dom(x);
 
   const o = document.createElement(type || 'div');
-  if (txt) o.innerText = txt;
-  if (html) o.innerHTML = html;
   if (id) o.id = id;
-
   const classD = x['class'];
   if (classD) {
     o.className = Array.isArray(classD) ? classD.join(' ') : classD;
   }
-  if (events) for (let k in events) o.addEventListener(k, events[k]);
+
+  if (txt) o.innerText = txt;
+  if (html) o.innerHTML = html;
   if (css) for (let k in css) o.style[k] = css[k];
+  if (attributes) for (let k in attributes) o.setAttribute(k, attributes[k]);
+  if (events) for (let k in events) o.addEventListener(k, events[k]);
 
   return o;
 };
@@ -1598,31 +1583,25 @@ const runFrontend = async (X) => {
   const app = await docMk({ id: 'app' });
   document.body.append(app);
 
-  //render persistent html elements
 
-  const saveDom = async (dom) => {
+  const saveDomElement = async (dom) => {
     const t = dom
+    if (!t.id) return;
+    if (!t.classList.contains('stored')) return;
+
     const data = { html: t.innerHTML }
+    const attr = {};
 
-    const css = {}
-    if (t.style.width) {
-      css.width = t.style.width
+    for (let i = 0; i < t.attributes.length; i++) {
+      const at = t.attributes[i];
+      if (at && at.value.trim()) {
+        attr[at.name] = at.value.trim();
+      }
     }
-    if (Object.keys(css).length > 0) {
-      data.css = css
+    if (Object.keys(attr).length > 0) {
+      data.attr = attr
     }
-
-    const attributes = {}
-    if (t.getAttribute('contenteditable')) {
-      attributes.contenteditable = true
-    }
-    if (Object.keys(attributes).length > 0) {
-      data.attributes = attributes
-    }
-
-    if (t.id) {
-      await X({ set: { id: t.id, v: data } })
-    }
+    await X({ set: { id: t.id, v: data } })
   }
 
   // const div = docMk({
@@ -1632,20 +1611,45 @@ const runFrontend = async (X) => {
   //   }
   // })
   //div.setAttribute('contenteditable', 'true');
-  //app.append(div);
-  //div.addEventListener('input', async (event) => saveDom(event.target));
+  //app.append(docMk({ html: '+' }))
 
   const DOMs = await X({ get: { getAll: {} } })
+  if (DOMs) {
+    for (let id in DOMs) {
+      const { html, attr } = DOMs[id]
+      const dom = docMk({ html, attributes: attr })
+      app.append(dom)
+    }
+  }
 
-  console.log(DOMs)
-  // for (let i of DOMs) {
-  //   const { id, html, css, attributes } = i
-  //   console.log(i);
-  //   const dom = docMk({ id, html, css, attributes })
-  //   app.append(dom)
-  // }
+  const obs = new MutationObserver(async (mutationList, observer) => {
+    for (const mutation of mutationList) {
+      console.log(mutation)
 
-  // console.log(data)
+      let t = mutation.target;
+      if (!t) continue;
+
+      if (mutation.removedNodes.length > 0) {
+        for (let node of mutation.removedNodes) {
+          if (node.id && node.classList.contains('stored')) {
+            await X({ del: { id: node.id } })
+          }
+        }
+      }
+
+      if (mutation.type === 'characterData') {
+        if (!t.parentNode) return;
+
+        t = t.parentNode;
+        if (t && !t.id && t.parentNode && t.parentNode.id) {
+          t = t.parentNode;
+        }
+      }
+
+      await saveDomElement(t)
+    }
+  });
+  obs.observe(app, { attributes: true, attributeOldValue: true, childList: true, subtree: true, characterData: true })
 
 
   //const app = new Dom();
@@ -1743,10 +1747,10 @@ const runBackend = async (b) => {
     }
     if (x.getAll) {
       const list = await b.p('fs', { readdir: { path: statePath } });
-      const r = []
+      const r = {}
       for (let i of list) {
         if (i === '.gitignore') continue;
-        r.push(await b.p('fs', { get: { path: `${statePath}/${i}`, format: 'json' } }));
+        r[i] = await b.p('fs', { get: { path: `${statePath}/${i}`, format: 'json' } });
       }
       return r
     }
@@ -1760,7 +1764,6 @@ const runBackend = async (b) => {
   });
   await b.s('fs', async (x) => {
     try {
-
       if (x.set) {
         const { path, v, format } = x.set;
 
