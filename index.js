@@ -47,8 +47,8 @@ export const xFactory = () => {
       const dataObj = typeof data === 'function' ? data : createDataProxy(data);
       return await this.f[event](dataObj);
     },
-    async s(e, f) {
-      this.f[e] = f;
+    async s(event, func) {
+      this.f[event] = func;
     },
     async x(data) {
       return this.p('x', data);
@@ -68,16 +68,16 @@ export const xFactory = () => {
         data[prop] = value
         return true
       },
-      apply(t, thisArg, ...args) {
-        return xInstance.p('x', ...args);
+      apply(t, thisArg, args) {
+        return xInstance.p('x', args[0]);
       },
     });
     return dataProxy;
   }
 
   const xProxy = new Proxy(function () { }, {
-    get(t, p) {
-      return xInstance[p];
+    get(t, prop) {
+      return xInstance[prop];
     },
     apply(t, thisArg, args) {
       return xInstance.p('x', args[0]);
@@ -1625,7 +1625,6 @@ const runFrontend = async (X) => {
   const obs = new MutationObserver(async (mutationList, observer) => {
     for (const mutation of mutationList) {
       console.log(mutation)
-
       let t = mutation.target;
       if (!t) continue;
 
@@ -1635,6 +1634,7 @@ const runFrontend = async (X) => {
             await X({ del: { id: node.id } })
           }
         }
+        return;
       }
 
       if (mutation.type === 'characterData') {
