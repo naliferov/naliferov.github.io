@@ -120,7 +120,6 @@ const queue = {
 };
 
 const getHtml = async (x) => {
-
   const { mtimeMs } = await x.b.p('fs', { stat: { path: x.jsFilename } });
   return {
     bin: `
@@ -1060,11 +1059,11 @@ class Dom {
 }
 
 const docMk = (x) => {
-  const { mkApi, id, type, txt, html, events, css, attributes } = x;
+  const { mkApi, id, tag, txt, html, events, css, attributes } = x;
 
   if (mkApi) return new Dom(x);
 
-  const o = document.createElement(type || 'div');
+  const o = document.createElement(tag || 'div');
   if (id) o.id = id;
   const classD = x['class'];
   if (classD) {
@@ -1076,6 +1075,12 @@ const docMk = (x) => {
   if (css) for (let k in css) o.style[k] = css[k];
   if (attributes) for (let k in attributes) o.setAttribute(k, attributes[k]);
   if (events) for (let k in events) o.addEventListener(k, events[k]);
+
+  if (o.classList.contains('js')) {
+    const js = document.createElement('script');
+    js.innerHTML = o.innerText;
+    o.append(js)
+  }
 
   return o;
 };
@@ -1576,20 +1581,15 @@ const runFrontend = async (X) => {
     const { o } = x;
     return getSize(o);
   });
-
-  const idb = new IndexedDb();
-  await idb.open();
-
-  const app = await docMk({ id: 'app' });
-  document.body.append(app);
-
-
-  const saveDomElement = async (dom) => {
-    const t = dom
+  await X.s('saveDOM', async (x) => {
+    const t = x.dom
     if (!t.id) return;
     if (!t.classList.contains('stored')) return;
 
-    const data = { html: t.innerHTML }
+    const data = {
+      tag: t.tagName,
+      html: t.classList.contains('js') ? t.innerText : t.innerHTML
+    }
     const attr = {};
 
     for (let i = 0; i < t.attributes.length; i++) {
@@ -1602,58 +1602,51 @@ const runFrontend = async (X) => {
       data.attr = attr
     }
     await X({ set: { id: t.id, v: data } })
-  }
+  });
 
-  // const div = docMk({
-  //   html: 'some div',
-  //   css: {
-  //     width: 'fit-content'
-  //   }
-  // })
-  //div.setAttribute('contenteditable', 'true');
-  //app.append(docMk({ html: '+' }))
+  const idb = new IndexedDb();
+  await idb.open();
+  const app = await docMk({ id: 'app' });
+  document.body.append(app);
 
   const DOMs = await X({ get: { getAll: {} } })
   if (DOMs) {
     for (let id in DOMs) {
-      const { html, attr } = DOMs[id]
-      const dom = docMk({ html, attributes: attr })
+      const { tag, html, attr } = DOMs[id]
+      const dom = docMk({ tag, html, attributes: attr })
       app.append(dom)
     }
   }
 
-  const obs = new MutationObserver(async (mutationList, observer) => {
-    for (const mutation of mutationList) {
-      console.log(mutation)
-      let t = mutation.target;
-      if (!t) continue;
-
-      if (mutation.removedNodes.length > 0) {
-        for (let node of mutation.removedNodes) {
-          if (node.id && node.classList.contains('stored')) {
-            await X({ del: { id: node.id } })
-          }
-        }
-        return;
+  const processRemovedNodes = async (removedNodes) => {
+    for (let node of removedNodes) {
+      if (node.id && node.classList.contains('stored')) {
+        await X({ del: { id: node.id } })
       }
+    }
+  }
 
-      if (mutation.type === 'characterData') {
-        if (!t.parentNode) return;
+  const obs = new MutationObserver(async (mutationList, observer) => {
+    for (const mut of mutationList) {
+      console.log(mut)
+      let t = mut.target; if (!t) continue;
 
+      //if (mut.removedNodes.length > 0) {
+      //processRemovedNodes(mut.removedNodes);
+      //return;
+      //}
+
+      if (mut.type === 'characterData') {
+        if (!t.parentNode) return; //todo try to find parent element with class stored
         t = t.parentNode;
         if (t && !t.id && t.parentNode && t.parentNode.id) {
           t = t.parentNode;
         }
       }
-
-      await saveDomElement(t)
+      await X.p('saveDOM', { dom: t });
     }
   });
   obs.observe(app, { attributes: true, attributeOldValue: true, childList: true, subtree: true, characterData: true })
-
-
-  //const app = new Dom();
-  //app.setDOM(appDOM);
 
   // const dataEditorObject = Object.create(dataEditor);
   // dataEditorObject.setB(b);
@@ -1671,17 +1664,6 @@ const runFrontend = async (X) => {
   //app.ins(frameI.o);
 
   return;
-
-  let settings = await b({ get: { path: frameSettingsPath } });
-  if (settings.m) {
-    const m = settings.m;
-    frame.setStyle({
-      left: m.left.v + 'px',
-      top: m.top.v + 'px',
-      width: m.width.v + 'px',
-      height: m.height.v + 'px',
-    });
-  }
 
   // const txtEditor = Object.create(TxtEditor);
   // txtEditor.setB(b);
