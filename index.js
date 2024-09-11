@@ -1601,6 +1601,9 @@ const runFrontend = async (X) => {
     if (Object.keys(attr).length > 0) {
       data.attr = attr
     }
+
+    console.log(t.id, data)
+
     await X({ set: { id: t.id, v: data } })
   });
 
@@ -1629,20 +1632,24 @@ const runFrontend = async (X) => {
   const obs = new MutationObserver(async (mutationList, observer) => {
     for (const mut of mutationList) {
       console.log(mut)
-      let t = mut.target; if (!t) continue;
+      let t = mut.target;
+      if (!t) continue;
 
-      //if (mut.removedNodes.length > 0) {
-      //processRemovedNodes(mut.removedNodes);
-      //return;
-      //}
+      //process added nodes
+      if (mut.removedNodes.length > 0) {
+        //processRemovedNodes(mut.removedNodes);
+        continue;
+      }
 
       if (mut.type === 'characterData') {
-        if (!t.parentNode) return; //todo try to find parent element with class stored
+        if (!t.parentNode) continue;
+        //todo try to find parent element with class stored
         t = t.parentNode;
         if (t && !t.id && t.parentNode && t.parentNode.id) {
           t = t.parentNode;
         }
       }
+
       await X.p('saveDOM', { dom: t });
     }
   });
