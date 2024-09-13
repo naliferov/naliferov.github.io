@@ -1452,60 +1452,6 @@ const frame = {
   },
 };
 
-const binEditor = {
-  async init() {
-    this.o = document.createElement('div');
-    this.oShadow = this.o.attachShadow({ mode: 'open' });
-
-    const container = document.createElement('div');
-    container.className = 'container';
-    this.oShadow.append(container);
-    this.container = container;
-
-    const buffer = await (await fetch('/data/data')).arrayBuffer();
-    const bin = new bArr();
-    await bin.init(new Uint8Array(buffer));
-
-    const links = {};
-    //container.append(document.createElement('input'));
-
-    const renderBlock = async (block) => {
-      const css = { display: 'inline' };
-
-      const blockDom = new Dom;
-      if (block.type === bType.LINK) {
-        blockDom.ins(new Dom({ txt: 'L', css }));
-      } else {
-        const linkBtn = new Dom({ txt: '+ ', css });
-        linkBtn.on('click', () => {
-
-        });
-
-        blockDom.ins(linkBtn);
-        blockDom.ins(new Dom({ txt: 'D', css }));
-      }
-
-      blockDom.ins(new Dom({ txt: ': ', css }));
-
-      if (block.type == bType.LINK) {
-        const txt = block.pos1 + ' - ' + block.pos2;
-        blockDom.ins(new Dom({ txt, css }));
-
-        links[block.pos1] = block.pos2;
-        links[block.pos2] = block.pos1;
-      } else {
-        blockDom.ins(new Dom({ txt: block.body.data, css }));
-      }
-
-      blockDom.ins(new Dom({ type: 'br' }));
-      container.append(blockDom.getDOM());
-    }
-    await iterateBinBlocks(bin, async (block) => await renderBlock(block));
-
-    console.log(links);
-  }
-};
-
 const runFrontend = async (X) => {
 
   globalThis.x = X;
@@ -1577,14 +1523,26 @@ const runFrontend = async (X) => {
     const { o } = x;
     return getSize(o);
   });
+  await X.s('getComplexBlockHtml', async (x) => {
+    const { dom } = x;
+    let html = ''
+
+    const script = dom.getElementsByClassName('script')[0];
+    if (script) html += script.outerHTML;
+    //const view = dom.getElementsByClassName('view')[0];
+    //if (view) html += view.outerHTML;
+
+    return html;
+  })
   await X.s('saveDOM', async (x) => {
     const t = x.dom
+
     if (!t.id) return;
     if (!t.classList.contains('stored')) return;
 
     const data = { tag: t.tagName }
-    if (t.classList.contains('js')) {
-      data.txt = t.innerText
+    if (t.classList.contains('complex-block')) {
+      data.html = await X.p('getComplexBlockHtml', { dom: t })
     } else {
       data.html = t.innerHTML
     }
@@ -1599,21 +1557,24 @@ const runFrontend = async (X) => {
       data.attr = attr
     }
     await X({ set: { id: t.id, v: data } })
-  });
+  })
+  await X.s('renderStoredElements', async (x) => {
+    const DOMs = await x({ get: { getAll: {} } })
+    if (DOMs) {
+      for (let id in DOMs) {
+        const { tag, html, txt, attr } = DOMs[id]
+        const dom = docMk({ tag, html, txt, attributes: attr })
+        app.append(dom)
+      }
+    }
+  })
 
   const idb = new IndexedDb();
   await idb.open();
   const app = await docMk({ id: 'app' });
   document.body.append(app);
 
-  const DOMs = await X({ get: { getAll: {} } })
-  if (DOMs) {
-    for (let id in DOMs) {
-      const { tag, html, txt, attr } = DOMs[id]
-      const dom = docMk({ tag, html, txt, attributes: attr })
-      app.append(dom)
-    }
-  }
+  await X.p('renderStoredElements');
 
   const processAddedNodes = async (target, addedNodes) => {
 
@@ -1634,6 +1595,15 @@ const runFrontend = async (X) => {
     }
   }
 
+  const findStoredParent = (dom) => {
+    let t = dom;
+    while (t) {
+      if (t.id && t.classList.contains('stored')) return t;
+      t = t.parentNode;
+    }
+    return null;
+  }
+
   const obs = new MutationObserver(async (mutationList, observer) => {
     for (const mut of mutationList) {
       console.log(mut)
@@ -1648,14 +1618,7 @@ const runFrontend = async (X) => {
         await processRemovedNodes(t, mut.removedNodes);
         continue;
       }
-
-      if (mut.type === 'characterData') {
-        if (!t.parentNode) continue;
-        t = t.parentNode;
-        if (!t.id && t.parentNode && t.parentNode.id) {
-          t = t.parentNode;
-        }
-      }
+      if (!t.classList) t = findStoredParent(t);
 
       await X.p('saveDOM', { dom: t });
     }

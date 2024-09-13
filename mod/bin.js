@@ -258,6 +258,60 @@ class bArr {
   }
 }
 
+const binEditor = {
+  async init() {
+    this.o = document.createElement('div');
+    this.oShadow = this.o.attachShadow({ mode: 'open' });
+
+    const container = document.createElement('div');
+    container.className = 'container';
+    this.oShadow.append(container);
+    this.container = container;
+
+    const buffer = await (await fetch('/data/data')).arrayBuffer();
+    const bin = new bArr();
+    await bin.init(new Uint8Array(buffer));
+
+    const links = {};
+    //container.append(document.createElement('input'));
+
+    const renderBlock = async (block) => {
+      const css = { display: 'inline' };
+
+      const blockDom = new Dom;
+      if (block.type === bType.LINK) {
+        blockDom.ins(new Dom({ txt: 'L', css }));
+      } else {
+        const linkBtn = new Dom({ txt: '+ ', css });
+        linkBtn.on('click', () => {
+
+        });
+
+        blockDom.ins(linkBtn);
+        blockDom.ins(new Dom({ txt: 'D', css }));
+      }
+
+      blockDom.ins(new Dom({ txt: ': ', css }));
+
+      if (block.type == bType.LINK) {
+        const txt = block.pos1 + ' - ' + block.pos2;
+        blockDom.ins(new Dom({ txt, css }));
+
+        links[block.pos1] = block.pos2;
+        links[block.pos2] = block.pos1;
+      } else {
+        blockDom.ins(new Dom({ txt: block.body.data, css }));
+      }
+
+      blockDom.ins(new Dom({ type: 'br' }));
+      container.append(blockDom.getDOM());
+    }
+    await iterateBinBlocks(bin, async (block) => await renderBlock(block));
+
+    console.log(links);
+  }
+};
+
 export const iterateBinBlocks = async (bin, fn) => {
 
   const size = await bin.getSize();
