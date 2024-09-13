@@ -1065,20 +1065,16 @@ const docMk = (x) => {
 
   const o = document.createElement(tag || 'div');
   if (id) o.id = id;
-  const classD = x['class'];
-  if (classD) {
-    o.className = Array.isArray(classD) ? classD.join(' ') : classD;
-  }
-
+  if (x['class']) o.className = Array.isArray(x['class']) ? x['class'].join(' ') : classD;
   if (txt) o.innerText = txt;
   if (html) o.innerHTML = html;
   if (css) for (let k in css) o.style[k] = css[k];
   if (attributes) for (let k in attributes) o.setAttribute(k, attributes[k]);
   if (events) for (let k in events) o.addEventListener(k, events[k]);
 
-  if (o.classList.contains('js')) {
+  if (o.classList.contains('js') && txt) {
     const js = document.createElement('script');
-    js.innerHTML = o.innerText;
+    js.innerHTML = o.id ? txt.replace('{{SELF_ID}}', o.id) : txt;
     o.append(js)
   }
 
@@ -1586,24 +1582,22 @@ const runFrontend = async (X) => {
     if (!t.id) return;
     if (!t.classList.contains('stored')) return;
 
-    const data = {
-      tag: t.tagName,
-      html: t.classList.contains('js') ? t.innerText : t.innerHTML
+    const data = { tag: t.tagName }
+    if (t.classList.contains('js')) {
+      data.txt = t.innerText
+    } else {
+      data.html = t.innerHTML
     }
+
     const attr = {};
 
     for (let i = 0; i < t.attributes.length; i++) {
       const at = t.attributes[i];
-      if (at && at.value.trim()) {
-        attr[at.name] = at.value.trim();
-      }
+      if (at && at.value.trim()) attr[at.name] = at.value.trim();
     }
     if (Object.keys(attr).length > 0) {
       data.attr = attr
     }
-
-    console.log(t.id, data)
-
     await X({ set: { id: t.id, v: data } })
   });
 
@@ -1615,17 +1609,28 @@ const runFrontend = async (X) => {
   const DOMs = await X({ get: { getAll: {} } })
   if (DOMs) {
     for (let id in DOMs) {
-      const { tag, html, attr } = DOMs[id]
-      const dom = docMk({ tag, html, attributes: attr })
+      const { tag, html, txt, attr } = DOMs[id]
+      const dom = docMk({ tag, html, txt, attributes: attr })
       app.append(dom)
     }
   }
 
-  const processRemovedNodes = async (removedNodes) => {
-    for (let node of removedNodes) {
+  const processAddedNodes = async (target, addedNodes) => {
+
+    const parent = target.parentNode;
+    if (parent && parent.id && parent.classList.contains('stored')) {
+      return await X.p('saveDOM', { dom: parent });
+    }
+
+    for (let node of addedNodes) {
       if (node.id && node.classList.contains('stored')) {
-        await X({ del: { id: node.id } })
+        await X.p('saveDOM', { dom: node });
       }
+    }
+  }
+  const processRemovedNodes = async (target, removedNodes) => {
+    if (target && target.id && target.classList.contains('stored')) {
+      return await X.p('saveDOM', { dom: target });
     }
   }
 
@@ -1635,17 +1640,19 @@ const runFrontend = async (X) => {
       let t = mut.target;
       if (!t) continue;
 
-      //process added nodes
+      if (mut.addedNodes.length > 0) {
+        await processAddedNodes(t, mut.addedNodes);
+        continue;
+      }
       if (mut.removedNodes.length > 0) {
-        //processRemovedNodes(mut.removedNodes);
+        await processRemovedNodes(t, mut.removedNodes);
         continue;
       }
 
       if (mut.type === 'characterData') {
         if (!t.parentNode) continue;
-        //todo try to find parent element with class stored
         t = t.parentNode;
-        if (t && !t.id && t.parentNode && t.parentNode.id) {
+        if (!t.id && t.parentNode && t.parentNode.id) {
           t = t.parentNode;
         }
       }
