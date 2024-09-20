@@ -1,44 +1,3 @@
-export const isObj = (v) => typeof v === 'object' && v !== null && !Array.isArray(v);
-export const pathToArr = (path) => {
-  if (!path) return [];
-  return Array.isArray(path) ? path : path.split('.');
-};
-export const parseCliArgs = (cliArgs) => {
-  const args = {};
-  let num = 0;
-
-  for (let i = 0; i < cliArgs.length; i++) {
-    if (i < 2) continue; //skip node and scriptName args
-
-    let arg = cliArgs[i];
-    args[num++] = arg;
-
-    if (arg.includes('=')) {
-      let [k, v] = arg.split('=');
-      if (!v) {
-        args[num] = arg; //start write args from main 0
-        continue;
-      }
-      args[k.trim()] = v.trim();
-    } else {
-      args['cmd'] = arg;
-    }
-  }
-  return args;
-};
-export const getDateTime = () => {
-  const d = new Date;
-  let year = d.getFullYear();
-  let month = ('0' + (d.getMonth() + 1)).slice(-2); // Months are zero-based
-  let day = ('0' + d.getDate()).slice(-2);
-  const hours = ('0' + d.getHours()).slice(-2);
-  const minutes = ('0' + d.getMinutes()).slice(-2);
-  const seconds = ('0' + d.getSeconds()).slice(-2);
-  return (
-    year + '-' + month + '-' + day + '_' + hours + ':' + minutes + ':' + seconds
-  );
-};
-
 export const xFactory = () => {
 
   const xInstance = {
@@ -93,30 +52,6 @@ export const u = async (x) => {
   if (x.del) return await del(x);
   if (x.getHtml) return await getHtml(x);
   if (x.signUp) return await signUp(x);
-};
-
-const queue = {
-  calls: [],
-  on: false,
-  worker: false,
-  async push(x) {
-    this.calls.push(x);
-    await this.process();
-  },
-  async process() {
-    if (this.isOn) return;
-    this.isOn = true;
-
-    while (1) {
-      const x = this.calls.shift();
-      if (!x) {
-        this.isOn = false;
-        break;
-      }
-      await this.worker(x);
-    }
-    this.isOn = false;
-  },
 };
 
 const getHtml = async (x) => {
@@ -1827,20 +1762,45 @@ const runBackend = async (b) => {
     }
     if (e.stack) console.log('e.stack', e.stack);
 
-    console.error('UNCAUGHT EXCEPTION', e, e.stack, origin);
-    process.exit(1);
+    console.error('UNCAUGHT EXCEPTION', e, e.stack, origin)
+    process.exit(1)
   });
+
+  const parseCliArgs = (cliArgs) => {
+    const args = {}
+    let num = 0
+
+    for (let i = 0; i < cliArgs.length; i++) {
+      if (i < 2) continue; //skip node and scriptName args
+
+      let arg = cliArgs[i];
+      args[num++] = arg;
+
+      if (arg.includes('=')) {
+        let [k, v] = arg.split('=');
+        if (!v) {
+          args[num] = arg; //start write args from main 0
+          continue;
+        }
+        args[k.trim()] = v.trim()
+      } else {
+        args['cmd'] = arg
+      }
+    }
+    return args
+  }
   const processCliArgs = async () => {
-    const args = parseCliArgs([...process.argv]);
-    args.ctx = { filename: process.argv[1].split('/').at(-1) };
+    const args = parseCliArgs([...process.argv])
+    args.ctx = { filename: process.argv[1].split('/').at(-1) }
 
     if (e[args[0]]) {
-      console.log((await e[args[0]](args)) ?? '');
+      console.log((await e[args[0]](args)) ?? '')
     } else {
-      console.log('Command not found');
+      console.log('Command not found')
     }
-  };
-  await processCliArgs();
+  }
+
+  await processCliArgs()
 }
 
 //BACKEND
