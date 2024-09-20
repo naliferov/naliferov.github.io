@@ -324,3 +324,19 @@ export const iterateBinBlocks = async (bin, fn) => {
     if (fn) await fn(block);
   }
 }
+
+// const { bFile, iterateBinBlocks } = await import('./mod/bin.js');
+// const bin = new bFile();
+// await bin.init('./data/data');
+// //await bin.truncate(30);
+
+// let lastPos = 0;
+// await iterateBinBlocks(bin, async (block) => {
+//   if (block.size) {
+//     lastPos += block.size;
+//   }
+//   console.log(block);
+// });
+// console.log('lastPos', lastPos);
+
+// await bin.close();
