@@ -1,0 +1,10 @@
+{
+  "tag": "DIV",
+  "html": "add",
+  "attr": {
+    "id": "std-add",
+    "class": "stored",
+    "style": "position: absolute; border: 1px solid; font-family: serif;",
+    "contenteditable": "true"
+  }
+}

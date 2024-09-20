@@ -1,0 +1,10 @@
+{
+  "tag": "DIV",
+  "html": "remove",
+  "attr": {
+    "id": "std-remove",
+    "class": "stored",
+    "style": "position: absolute;border: 1px solid;font-family: serif;left: 45px;",
+    "contenteditable": "true"
+  }
+}

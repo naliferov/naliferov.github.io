@@ -1,0 +1,1 @@
+{"tag":"DIV","html":"<div>//how to connect modifier to other unit?</div><div>//by id?;</div><div><br></div><div>(() =&gt; {</div><div>&nbsp; &nbsp; const id = '';</div><div>&nbsp; &nbsp; console.log(btn, 'mofifier txt')&nbsp;</div><div>})()</div>","attr":{"id":"modifier","class":"stored","style":"position: absolute;border: 1px solid;left: 458px;","contenteditable":"true"}}
