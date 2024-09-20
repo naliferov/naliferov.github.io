@@ -601,7 +601,7 @@ export const prepareForTransfer = (v) => {
 }
 
 export const httpHandler = async (x) => {
-  const { b, runtimeCtx, rq, fs, jsFileName } = x
+  const { b, runtimeCtx, rq, fs } = x
   const ctx = {
     rq,
     headers: rq.headers,
