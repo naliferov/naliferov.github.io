@@ -849,6 +849,7 @@ export class HttpClient {
     if (options.timeout) {
       timeoutId = setTimeout(() => controller.abort(), options.timeout);
     }
+
     this.processHeaders(headers, params);
 
     const fetchParams = { method, headers, signal: controller.signal };
@@ -857,23 +858,14 @@ export class HttpClient {
       if (params instanceof ArrayBuffer) {
         fetchParams.body = params;
       } else {
-        fetchParams.body =
-          headers['Content-Type'] === 'application/json'
-            ? JSON.stringify(params)
-            : this.strParams(params);
+        fetchParams.body = headers['Content-Type'] === 'application/json' ? JSON.stringify(params) : this.strParams(params);
       }
     } else {
       if (Object.keys(params).length) url += '?' + new URLSearchParams(params);
     }
 
-    const response = await fetch(
-      this.baseURL ? this.baseURL + url : url,
-      fetchParams,
-    );
-    if (timeoutId) {
-      clearTimeout(timeoutId);
-      timeoutId = null;
-    }
+    const response = await fetch(this.baseURL ? this.baseURL + url : url, fetchParams);
+    if (timeoutId) { clearTimeout(timeoutId); timeoutId = null; }
 
     let r = {
       statusCode: response.status,
@@ -1071,12 +1063,6 @@ const docMk = (x) => {
   if (css) for (let k in css) o.style[k] = css[k];
   if (attributes) for (let k in attributes) o.setAttribute(k, attributes[k]);
   if (events) for (let k in events) o.addEventListener(k, events[k]);
-
-  if (o.classList.contains('js') && txt) {
-    const js = document.createElement('script');
-    js.innerHTML = o.id ? txt.replace('{{SELF_ID}}', o.id) : txt;
-    o.append(js)
-  }
 
   return o;
 };
@@ -1481,13 +1467,7 @@ const runFrontend = async (X) => {
   });
   await X.s('port', async (x) => {
     let headers = {};
-    // if (x.set && x.set.v instanceof ArrayBuffer) {
-    //   const v = x.set.v;
-    //   delete x.set.v;
-    //   headers.x = JSON.stringify(x);
-    //   x = v;
-    // }
-
+    // x.set.v instanceof ArrayBuffer
     const { data } = await new HttpClient().post('/', x, headers);
     return data;
   });
@@ -1529,8 +1509,6 @@ const runFrontend = async (X) => {
 
     const script = dom.getElementsByClassName('script')[0];
     if (script) html += script.outerHTML;
-    //const view = dom.getElementsByClassName('view')[0];
-    //if (view) html += view.outerHTML;
 
     return html;
   })
@@ -1564,7 +1542,17 @@ const runFrontend = async (X) => {
       for (let id in DOMs) {
         const { tag, html, txt, attr } = DOMs[id]
         const dom = docMk({ tag, html, txt, attributes: attr })
-        app.append(dom)
+        x.app.append(dom)
+
+        if (dom.classList.contains('complex-block')) {
+          const scriptDOM = dom.getElementsByClassName('script')[0]
+          if (scriptDOM) {
+            const js = document.createElement('script');
+            js.className = 'skipSaving'
+            js.innerHTML = scriptDOM.innerText.replace('{{SELF_ID}}', id);
+            dom.append(js)
+          }
+        }
       }
     }
   })
@@ -1573,95 +1561,80 @@ const runFrontend = async (X) => {
   await idb.open();
   const app = await docMk({ id: 'app' });
   document.body.append(app);
-
-  await X.p('renderStoredElements');
+  await X.p('renderStoredElements', { app });
 
   const processAddedNodes = async (target, addedNodes) => {
 
-    const parent = target.parentNode;
-    if (parent && parent.id && parent.classList.contains('stored')) {
-      return await X.p('saveDOM', { dom: parent });
-    }
-
     for (let node of addedNodes) {
-      if (node.id && node.classList.contains('stored')) {
+      if (!node.classList) continue;
+      if (node.classList.contains('skipSaving')) {
+        return false;
+      }
+      if (node.classList.contains('stored')) {
         await X.p('saveDOM', { dom: node });
       }
     }
+
+    const t = findStored(target);
+    if (t) await X.p('saveDOM', { dom: t });
   }
   const processRemovedNodes = async (target, removedNodes) => {
-    if (target && target.id && target.classList.contains('stored')) {
-      return await X.p('saveDOM', { dom: target });
+
+    for (let node of removedNodes) {
+      if (node.classList && node.classList.contains('skipSaving')) {
+        return false;
+      }
     }
+
+    const t = findStored(target);
+    if (t) await X.p('saveDOM', { dom: t });
   }
 
-  const findStoredParent = (dom) => {
+  const findStored = (dom) => {
     let t = dom;
     while (t) {
-      if (t.id && t.classList.contains('stored')) return t;
+      if (t.classList && t.classList.contains('stored')) {
+        return t;
+      }
       t = t.parentNode;
     }
     return null;
   }
 
-  const obs = new MutationObserver(async (mutationList, observer) => {
+  const ob = new MutationObserver(async (mutationList, observer) => {
+
     for (const mut of mutationList) {
       console.log(mut)
       let t = mut.target;
       if (!t) continue;
 
       if (mut.addedNodes.length > 0) {
-        await processAddedNodes(t, mut.addedNodes);
+        const result = await processAddedNodes(t, mut.addedNodes);
+        if (result === false) return;
         continue;
       }
       if (mut.removedNodes.length > 0) {
-        await processRemovedNodes(t, mut.removedNodes);
+        const result = await processRemovedNodes(t, mut.removedNodes);
+        if (result === false) return;
         continue;
       }
-      if (!t.classList) t = findStoredParent(t);
+
+      t = findStored(t);
+      if (!t) continue;
 
       await X.p('saveDOM', { dom: t });
     }
   });
-  obs.observe(app, { attributes: true, attributeOldValue: true, childList: true, subtree: true, characterData: true })
-
-  // const dataEditorObject = Object.create(dataEditor);
-  // dataEditorObject.setB(b);
-  // await dataEditorObject.init();
+  ob.observe(app, { attributes: true, attributeOldValue: true, childList: true, subtree: true, characterData: true })
 
   //const binEditorI = Object.create(binEditor);
   //await binEditor.init();
-
   //const frameI = Object.create(frame);
-  //frameI.setB(b);
   //await frameI.init();
-
   //frameI.setTitle('Data editor');
   //frameI.setContent(binEditorI.o);
   //app.ins(frameI.o);
-
-  return;
-
-  // const txtEditor = Object.create(TxtEditor);
-  // txtEditor.setB(b);
-  // await txtEditor.init();
-
-  // const txtEditorFrame = Object.create(Frame);
-  // txtEditorFrame.setB(b);
-  // await txtEditorFrame.init();
-  // txtEditorFrame.setTitle('Txt editor');
-  // txtEditorFrame.setContent(txtEditor.o);
-  // txtEditorFrame.setStyle({
-  //   top: '300px',
-  //   left: '300px',
-  // });
-
-  //appDOM.append(txtEditorFrame.o);
-
-  //const customHtml = await b.p('doc.mk', { html: 'okokok', class: 'customHtml' });
-  //appDOM.append(customHtml);
-
-  window.onkeydown = (e) => dataEditor.keydown(e);
+  //window.onkeydown = (e) => dataEditor.keydown(e);
 };
 
 const runBackend = async (b) => {
@@ -1670,7 +1643,6 @@ const runBackend = async (b) => {
   const fs = promises;
 
   await b.s('x', async (x) => await u(x));
-
   await b.s('get_', () => _);
   await b.s('getUniqId', () => crypto.randomUUID());
   await b.s('sh', async (x) => {
