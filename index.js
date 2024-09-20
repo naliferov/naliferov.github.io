@@ -129,7 +129,7 @@ const getHtml = async (x) => {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1"/>
 </head>
-<body><script type="module" src="/${x.jsFilename}?${mtimeMs}"></script></body>
+<body><script type="module" src="/${x.jsFilename}?mtime=${mtimeMs}"></script></body>
 </html>
     `,
     isHtml: true,
@@ -666,46 +666,31 @@ export const prepareForTransfer = (v) => {
 }
 
 export const httpHandler = async (x) => {
-  const { b, runtimeCtx, rq, fs, jsFileName } = x;
+  const { b, runtimeCtx, rq, fs, jsFileName } = x
   const ctx = {
     rq,
     headers: rq.headers,
     url: new URL('http://t.c' + rq.url),
     query: {},
     body: {},
-  };
-  ctx.url.searchParams.forEach((v, k) => (ctx.query[k] = v));
-
-  if (typeof rq.headers.get !== 'function') {
-    ctx.headers = {
-      headers: rq.headers,
-      get(k) {
-        return this.headers[k];
-      },
-    };
   }
+  ctx.url.searchParams.forEach((v, k) => (ctx.query[k] = v));
+  console.log(ctx.query)
 
   const r = await httpGetFile({ ctx, fs });
-  if (r.file) {
-    return httpMkResp({ v: r.file, mime: r.mime, isBin: true });
-  }
-  if (r.fileNotFound) {
-    return httpMkResp({ code: 404, v: 'File not found' });
-  }
+  if (r.file) return httpMkResp({ v: r.file, mime: r.mime, isBin: true });
+  if (r.fileNotFound) return httpMkResp({ code: 404, v: 'File not found' });
 
-  const body = await httpGetBody({ ctx });
-  let msg = body ?? query;
-
+  const msg = await httpGetBody({ ctx }) ?? {};
   if (msg.err) {
     console.log('if (msg.err)', msg.err);
     return httpMkResp({ v: 'error processing rq' });
   }
 
-  const xHeader = ctx.headers.get('x');
+  const xHeader = ctx.headers.x;
   if (msg.bin && xHeader) {
     msg = { bin: msg.bin, ...JSON.parse(xHeader) };
   }
-
   if (Object.keys(msg).length < 1) {
     msg.getHtml = true;
     msg.jsFilename = runtimeCtx.filename;
@@ -725,7 +710,7 @@ export const httpHandler = async (x) => {
 const httpGetBody = async ({ ctx, limitMb = 12 }) => {
   let limit = limitMb * 1024 * 1024;
   const rq = ctx.rq;
-  const readAsJson = ctx.headers.get('content-type') === 'application/json';
+  const readAsJson = ctx.headers['content-type'] === 'application/json';
 
   if (!rq.on) {
     if (!rq.body) return {};
