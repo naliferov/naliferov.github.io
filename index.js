@@ -4,13 +4,13 @@ export const xFactory = () => {
     f: {},
     async p(event, data) {
       const dataObj = typeof data === 'function' ? data : createDataProxy(data);
-      return await this.f[event](dataObj);
+      return await this.f[event](dataObj)
     },
     async s(event, func) {
-      this.f[event] = func;
+      this.f[event] = func
     },
     async x(data) {
-      return this.p('x', data);
+      return this.p('x', data)
     },
   }
 
@@ -28,20 +28,20 @@ export const xFactory = () => {
         return true
       },
       apply(t, thisArg, args) {
-        return xInstance.p('x', args[0]);
+        return xInstance.p('x', args[0])
       },
-    });
-    return dataProxy;
+    })
+    return dataProxy
   }
 
   const xProxy = new Proxy(function () { }, {
     get(t, prop) {
-      return xInstance[prop];
+      return xInstance[prop]
     },
     apply(t, thisArg, args) {
-      return xInstance.p('x', args[0]);
+      return xInstance.p('x', args[0])
     },
-  });
+  })
 
   return xProxy
 }
@@ -610,7 +610,6 @@ export const httpHandler = async (x) => {
     body: {},
   }
   ctx.url.searchParams.forEach((v, k) => (ctx.query[k] = v));
-  console.log(ctx.query)
 
   const r = await httpGetFile({ ctx, fs });
   if (r.file) return httpMkResp({ v: r.file, mime: r.mime, isBin: true });
