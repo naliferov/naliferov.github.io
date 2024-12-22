@@ -4,15 +4,40 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
-
     <title>Nick Aliferov</title>
   </head>
   <body>
+    <style>
+      html {
+        color: rgb(37, 37, 37);
+        font-family: Roboto, sans-serif;
+      }
+      .flex {
+        display: flex;
+      }
+      .intro {
+        margin-top: 40px;
+        font-size: 1.5em;
+      }
+      .project {
+        margin-bottom: 4em;
+        background: lightgray;
+      }
+      .point {
+        width: 10px;
+        height: 10px;
+        background: black;
+      }
+      .gap {
+        width: 15px;
+        height: 15px;
+      }
+    </style>
+
 
     <div class="intro">
       Hi there! Nick Aliferov is on the line. I am professional software developer since 2013. Here you can explore my micro projects.
     </div>
-    
     <br><br>
 
     <br>
@@ -49,92 +74,181 @@
     </div>
 
     <div class="project">
-      <h2>Being of dot</h2>
-      <div class="dot"></div><br>
-      <div>Dot is one of basics objects of visual being. We have also meet dot in math, in art and etc.
+      <h2>Being of point</h2>
+      <div class="point"></div><br>
+      <div>Point is one of basics objects of visual being. We have also meet dot in math, in art and etc.
         In this case doesn't matter is it square dot or round dot.
       </div>
     </div>
 
     <div class="project">
-      <h2>Being of several dots</h2>
+      <h2>Being of several points</h2>
       <div class="flex">
-        <div class="dot"></div>
+        <div class="point"></div>
         <div class="gap"></div>
-        <div class="dot"></div>
+        <div class="point"></div>
         <div class="gap"></div>
-        <div class="dot"></div>
+        <div class="point"></div>
         <div class="gap"></div>
-        <div class="dot"></div>
+        <div class="point"></div>
         <div class="gap"></div>
-        <div class="dot"></div>
+        <div class="point"></div>
         <div class="gap"></div>
-        <div class="dot"></div>
+        <div class="point"></div>
         <div class="gap"></div>
-        <div class="dot"></div>
+        <div class="point"></div>
         <div class="gap"></div>
-        <div class="dot"></div>
+        <div class="point"></div>
         <div class="gap"></div>
-        <div class="dot"></div>
+        <div class="point"></div>
       </div>
       <br>
-      <div>Here you can see several dots. Pretty simple, yeah?</div>
+      <div>Here you can see several points. Pretty simple, yeah?</div>
     </div>
 
     <div class="project">
       <h2>Being of line</h2>
       <div class="flex">
-        <div class="dot"></div>
-        <div class="dot"></div>
-        <div class="dot"></div>
-        <div class="dot"></div>
-        <div class="dot"></div>
-        <div class="dot"></div>
-        <div class="dot"></div>
-        <div class="dot"></div>
-        <div class="dot"></div>
-        <div class="dot"></div>
+        <div class="point"></div>
+        <div class="point"></div>
+        <div class="point"></div>
+        <div class="point"></div>
+        <div class="point"></div>
+        <div class="point"></div>
+        <div class="point"></div>
+        <div class="point"></div>
+        <div class="point"></div>
+        <div class="point"></div>
       </div>
       <br>
-      <div>Connection of several dots create a simple line.</div>
+      <div>Connection of several points create a simple line.</div>
     </div>
 
-    <div class="project">
-      <h2>Being of number</h2>
-      <div>1</div>
-
+    <div id="random-walk-points-4-redirections">
+      <h2>Random walk point (4 directions)</h2>
+      <div class="container"></div>    
     </div>
 
-    <div class="project">
-      <h2 id="project-line">Being of letter</h2>
-      <h3 class="project_desc">T</h3>
+    <div id="random-walk-points-8-redirections">
+      <h2>Random walk point (8 directions)</h2>
+      <div class="container"></div>    
     </div>
 
-    <style>
-      html {
-        color: rgb(37, 37, 37);
-        font-family: Roboto, sans-serif;
+    <div id="random-uniform-probability">
+      <h2>Random uniform probability</h2>
+      <div class="container"></div>    
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/p5@1.11.2/lib/p5.min.js"></script>
+    <script>
+      class Point {
+        constructor() {
+          this.x = 125
+          this.y = 125
+        }
+        left() { this.x-- }
+        right() { this.x++ }
+        up() { this.y-- }
+        down() { this.y++ }
+        randomMove4Directions(p5) {
+          const choice = p5.floor(p5.random(4))
+          if (choice === 0) {
+            this.x++
+          } else if (choice === 1) {
+            this.x--
+          } else if (choice === 2) {
+            this.y++
+          } else {
+            this.y--
+          }
+        }
+        randomMove8Directions(p5) {
+          let xstep = p5.floor(p5.random(3)) - 1
+          let ystep = p5.floor(p5.random(3)) - 1
+
+          this.x += xstep;
+          this.y += ystep;
+        }
       }
-      .flex {
-        display: flex;
+
+      (() => {
+        let project = document.getElementById('random-walk-points-4-redirections')
+        let container = project.getElementsByClassName('container')[0]
+        const space = { x: 250, y: 250 }
+        const point = new Point
+        const sketch = (p) => {
+          p.setup = () => {
+            p.createCanvas(space.x, space.y)
+            p.background('lightgray')
+            p.stroke(0)
+            p.strokeWeight(2)
+          }
+          p.frameRate(10)
+          p.draw = () => {
+            point.randomMove4Directions(p)
+            p.point(point.x, point.y)
+          }
+        }
+        new p5(sketch, container)
+      })()
+    </script>
+
+    <script>
+      (() => {
+        let project = document.getElementById('random-walk-points-8-redirections')
+        let container = project.getElementsByClassName('container')[0]
+        const space = { x: 250, y: 250 }
+        const point = new Point
+        const sketch = (p) => {
+          p.setup = () => {
+            p.createCanvas(space.x, space.y)
+            p.background('lightgray')
+            p.stroke(0)
+            p.strokeWeight(2)
+          }
+          p.frameRate(10)
+          p.draw = () => {
+            point.randomMove8Directions(p)
+            p.point(point.x, point.y)
+          }
+        }
+
+        new p5(sketch, container)
+      })()
+    </script>
+
+<script>
+  (() => {
+    let project = document.getElementById('random-uniform-probability')
+    let container = project.getElementsByClassName('container')[0]
+    const space = { x: 640, y: 240 }
+    const point = new Point
+
+    let randomCounts = []
+    let total = 20
+    for (let i = 0; i < total; i++) {
+      randomCounts[i] = 0
+    }
+    let w = space.x / randomCounts.length
+
+    const sketch = (p) => {
+      p.setup = () => {
+        p.createCanvas(space.x, space.y)
+        p.background('lightgray')
+        p.stroke(0)
+        p.fill(150)
       }
-      .intro {
-        margin-top: 40px;
-        font-size: 1.5em;
+      p.frameRate(25)
+      p.draw = () => {
+        let index = p.floor(p.random(randomCounts.length))
+        randomCounts[index]++
+        for (let x = 0; x < randomCounts.length; x++) {
+          p.rect(x * w, space.y - randomCounts[x], w - 1, randomCounts[x])
+        }
       }
-      .project {
-        margin-bottom: 4em;
-        background: #eae3e5;
-      }
-      .dot {
-        width: 10px;
-        height: 10px;
-        background: black;
-      }
-      .gap {
-        width: 15px;
-        height: 15px;
-      }
-    </style>
+    }
+    new p5(sketch, container)
+  })()
+</script>
   </body>
 </html>
