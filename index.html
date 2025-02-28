@@ -40,10 +40,6 @@
     </div>
     <br>
 
-    <div id="nanoid">
-      
-    </div>
-
     <div class="project">
       <h2>Point</h2>
       <div class="point"></div><br>
@@ -53,32 +49,7 @@
     </div>
 
     <div class="project">
-      <h2>Being of several points</h2>
-      <div class="flex">
-        <div class="point"></div>
-        <div class="gap"></div>
-        <div class="point"></div>
-        <div class="gap"></div>
-        <div class="point"></div>
-        <div class="gap"></div>
-        <div class="point"></div>
-        <div class="gap"></div>
-        <div class="point"></div>
-        <div class="gap"></div>
-        <div class="point"></div>
-        <div class="gap"></div>
-        <div class="point"></div>
-        <div class="gap"></div>
-        <div class="point"></div>
-        <div class="gap"></div>
-        <div class="point"></div>
-      </div>
-      <br>
-      <div>Here you can see several points. Pretty simple, yeah?</div>
-    </div>
-
-    <div class="project">
-      <h2>Being of line</h2>
+      <h2>Line</h2>
       <div class="flex">
         <div class="point"></div>
         <div class="point"></div>
@@ -95,9 +66,14 @@
       <div>Connection of several points create a simple line.</div>
     </div>
 
+    <div>
+      <h2>nanoid8</h2>
+      <div id="nanoid8"></div>    
+    </div>
+
     <div id="random-walk-points-4-redirections">
       <h2>Random walk point (4 directions)</h2>
-      <div class="container"></div>    
+      <div class="container"></div>   
     </div>
 
     <div id="random-walk-points-8-redirections">
@@ -109,10 +85,17 @@
       <h2>Random uniform probability</h2>
       <div class="container"></div>    
     </div>
+
+    <script type="module">
+      import * as nanoidModule from 'https://cdn.jsdelivr.net/npm/nanoid@5.1.2/+esm'
+      const { nanoid } = nanoidModule
+
+      document.getElementById('nanoid8').innerText = nanoid(8)
+    </script>
     
     <script src="https://cdn.jsdelivr.net/npm/p5@1.11.2/lib/p5.min.js"></script>
-
     <script>
+
       class Point {
         constructor() {
           this.x = 125
