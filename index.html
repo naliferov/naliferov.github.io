@@ -71,12 +71,7 @@
       <div id="nanoid8"></div>    
     </div>
 
-    <div id="random-walk-points-4-redirections">
-      <h2>Random walk point (4 directions)</h2>
-      <div class="container"></div>   
-    </div>
-
-    <div id="random-walk-points-8-redirections">
+    <!-- <div id="random-walk-points-8-redirections">
       <h2>Random walk point (8 directions)</h2>
       <div class="container"></div>    
     </div>
@@ -84,7 +79,7 @@
     <div id="random-uniform-probability">
       <h2>Random uniform probability</h2>
       <div class="container"></div>    
-    </div>
+    </div> -->
 
     <script type="module">
       import * as nanoidModule from 'https://cdn.jsdelivr.net/npm/nanoid@5.1.2/+esm'
@@ -92,139 +87,7 @@
 
       document.getElementById('nanoid8').innerText = nanoid(8)
     </script>
-    
     <script src="https://cdn.jsdelivr.net/npm/p5@1.11.2/lib/p5.min.js"></script>
-    <script>
-
-      class Point {
-        constructor() {
-          this.x = 125
-          this.y = 125
-        }
-        left() { this.x-- }
-        right() { this.x++ }
-        up() { this.y-- }
-        down() { this.y++ }
-        randomMove4Directions(p5) {
-          const choice = p5.floor(p5.random(4))
-          if (choice === 0) {
-            this.x++
-          } else if (choice === 1) {
-            this.x--
-          } else if (choice === 2) {
-            this.y++
-          } else {
-            this.y--
-          }
-        }
-        randomMove8Directions(p5) {
-          let xstep = p5.floor(p5.random(3)) - 1
-          let ystep = p5.floor(p5.random(3)) - 1
-
-          this.x += xstep;
-          this.y += ystep;
-        }
-      }
-
-      (() => {
-        let project = document.getElementById('random-walk-points-4-redirections')
-        let container = project.getElementsByClassName('container')[0]
-        const space = { x: 250, y: 250 }
-        const point = new Point
-        const sketch = (p) => {
-          p.setup = () => {
-            p.createCanvas(space.x, space.y)
-            p.background('lightgray')
-            p.stroke(0)
-            p.strokeWeight(2)
-          }
-          p.frameRate(10)
-          p.draw = () => {
-            point.randomMove4Directions(p)
-            p.point(point.x, point.y)
-          }
-        }
-        new p5(sketch, container)
-      })()
-    </script>
-
-    <script>
-      (() => {
-        let project = document.getElementById('random-walk-points-8-redirections')
-        let container = project.getElementsByClassName('container')[0]
-        const space = { x: 250, y: 250 }
-        const point = new Point
-        const sketch = (p) => {
-          p.setup = () => {
-            p.createCanvas(space.x, space.y)
-            p.background('lightgray')
-            p.stroke(0)
-            p.strokeWeight(2)
-          }
-          p.frameRate(10)
-          p.draw = () => {
-            point.randomMove8Directions(p)
-            p.point(point.x, point.y)
-          }
-        }
-
-        new p5(sketch, container)
-      })()
-    </script>
-
-<script>
-  (() => {
-    let project = document.getElementById('random-uniform-probability')
-    let container = project.getElementsByClassName('container')[0]
-    const space = { x: 640, y: 240 }
-    const point = new Point
-
-    let randomCounts = []
-    let total = 20
-    for (let i = 0; i < total; i++) {
-      randomCounts[i] = 0
-    }
-    let w = space.x / randomCounts.length
-
-    const sketch = (p) => {
-      p.setup = () => {
-        p.createCanvas(space.x, space.y)
-        p.background('lightgray')
-        p.stroke(0)
-        p.fill(150)
-      }
-      p.frameRate(25)
-      p.draw = () => {
-        let index = p.floor(p.random(randomCounts.length))
-        randomCounts[index]++
-        for (let x = 0; x < randomCounts.length; x++) {
-          p.rect(x * w, space.y - randomCounts[x], w - 1, randomCounts[x])
-        }
-      }
-    }
-    new p5(sketch, container)
-  })()
-</script>
-
-<script>
-  (() => {
-    let project = document.getElementById('random-uniform-probability')
-    let container = project.getElementsByClassName('container')[0]
-    const space = { x: 640, y: 240 }
-    const point = new Point
-
-    const sketch = (p) => {
-      p.setup = () => {
-        
-      }
-      p.frameRate(25)
-      p.draw = () => {
-        
-      }
-    }
-    new p5(sketch, container)
-  })()
-</script>
-
+    <script src="module/app.js"></script>
   </body>
 </html>
