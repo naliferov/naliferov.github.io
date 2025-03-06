@@ -67,8 +67,13 @@
     </div>
 
     <div>
-      <h2>nanoid8</h2>
-      <div id="nanoid8"></div>    
+      <h2>nanoid8 generator</h2>
+      <div id="nanoid8-generator"></div>    
+    </div>
+
+    <div>
+      <h2>password generator</h2>
+      <div id="password-generator"></div>    
     </div>
 
     <!-- <div id="random-walk-points-8-redirections">
@@ -84,9 +89,25 @@
     <script type="module">
       import * as nanoidModule from 'https://cdn.jsdelivr.net/npm/nanoid@5.1.2/+esm'
       const { nanoid } = nanoidModule
-
-      document.getElementById('nanoid8').innerText = nanoid(8)
+      document.getElementById('nanoid8-generator').innerText = nanoid(8)
     </script>
+    <script type="module">
+      let str = ''
+      let len = '20'
+
+      while (str.length < len) {
+        const arr = new Uint8Array(100)
+        crypto.getRandomValues(arr)
+        for (let i = 0; i < arr.length; i++) {
+          const v = arr[i]
+          if (v >= 33 && v < 127) str += String.fromCharCode(v)
+      
+          if (str.length >= len) break
+        }
+      }
+      document.getElementById('password-generator').innerText = str
+    </script>
+
     <script src="https://cdn.jsdelivr.net/npm/p5@1.11.2/lib/p5.min.js"></script>
     <script src="module/app.js"></script>
   </body>
