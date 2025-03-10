@@ -21,7 +21,9 @@
       }
       .project {
         margin-bottom: 3em;
-        background: lightgray;
+        box-shadow: rgba(0, 0, 0, 0.16) 0px 3px 6px, rgba(0, 0, 0, 0.23) 0px 3px 6px;
+        padding: 0.5em 1em;
+        max-width: 680px;
       }
       .point {
         width: 10px;
@@ -43,7 +45,7 @@
     <div class="project">
       <h2>Point</h2>
       <div class="point"></div><br>
-      <div>Point is one of basics objects of visual being. We have also meet dot in math, in art and etc.
+      <div>Point is one of basics objects. We have also meet dot in math, in art and etc.
         In this case doesn't matter is it square dot or round dot.
       </div>
     </div>
@@ -66,12 +68,12 @@
       <div>Connection of several points create a simple line.</div>
     </div>
 
-    <div>
-      <h2>nanoid8 generator</h2>
-      <div id="nanoid8-generator"></div>    
+    <div class="project">
+      <h2>nanoid generator</h2>
+      <div id="nanoid-generator"></div>    
     </div>
 
-    <div>
+    <div class="project">
       <h2>password generator</h2>
       <div id="password-generator"></div>    
     </div>
@@ -89,8 +91,9 @@
     <script type="module">
       import * as nanoidModule from 'https://cdn.jsdelivr.net/npm/nanoid@5.1.2/+esm'
       const { nanoid } = nanoidModule
-      document.getElementById('nanoid8-generator').innerText = nanoid(8)
+      document.getElementById('nanoid-generator').innerText = nanoid()
     </script>
+
     <script type="module">
       let str = ''
       let len = '20'
@@ -109,6 +112,5 @@
     </script>
 
     <script src="https://cdn.jsdelivr.net/npm/p5@1.11.2/lib/p5.min.js"></script>
-    <script src="module/app.js"></script>
   </body>
 </html>
