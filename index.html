@@ -78,15 +78,10 @@
       <div id="password-generator"></div>    
     </div>
 
-    <!-- <div id="random-walk-points-8-redirections">
-      <h2>Random walk point (8 directions)</h2>
-      <div class="container"></div>    
+    <div class="project">
+      <h2>name generator</h2>
+      <div id="name-generator"></div>    
     </div>
-
-    <div id="random-uniform-probability">
-      <h2>Random uniform probability</h2>
-      <div class="container"></div>    
-    </div> -->
 
     <script type="module">
       import * as nanoidModule from 'https://cdn.jsdelivr.net/npm/nanoid@5.1.2/+esm'
@@ -109,6 +104,14 @@
         }
       }
       document.getElementById('password-generator').innerText = str
+    </script>
+
+    <script type="module">
+      const names = ['Alice', 'Benjamin', 'Catherine', 'David', 'Elizabeth', 'Frank', 'Grace', 'Henry', 'Isabella', 'Jack', 'Katherine', 'Lucas', 'Maria', 'Nathan', 'Olivia', 'Peter', 'Quinn', 'Rachel', 'Samuel', 'Thomas', 'Uma', 'Victor', 'William', 'Xander', 'Yolanda', 'Zachary', 'Abigail', 'Brandon', 'Charlotte', 'Daniel', 'Emma', 'Felix', 'Georgia', 'Harrison', 'Iris', 'James', 'Kylie', 'Liam', 'Mia', 'Noah', 'Oscar', 'Penelope', 'Quentin', 'Rose', 'Sophie', 'Theodore', 'Ursula', 'Vincent', 'Wendy', 'Xavier', 'Yvette', 'Zoe', 'Adrian', 'Beatrice', 'Connor', 'Diana', 'Ethan', 'Fiona', 'Gabriel', 'Hannah', 'Ian', 'Julia', 'Kevin', 'Luna', 'Marcus', 'Nora', 'Owen', 'Paige', 'Quincy', 'Rebecca', 'Simon', 'Tessa', 'Unity', 'Violet', 'Walter', 'Ximena', 'York', 'Zelda', 'Adam', 'Bella', 'Caleb', 'Daisy', 'Edward', 'Flora', 'George', 'Harper', 'Isaac', 'Jasmine', 'Kyle', 'Lily', 'Mason', 'Nina', 'Oliver', 'Phoebe', 'Queen', 'Ruby', 'Sarah', 'Tyler']
+      const nameGenerator = () => {
+        return names[Math.floor(Math.random() * names.length)]
+      }
+      document.getElementById('name-generator').innerText = nameGenerator()
     </script>
 
     <script src="https://cdn.jsdelivr.net/npm/p5@1.11.2/lib/p5.min.js"></script>
