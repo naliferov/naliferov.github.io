@@ -1,2 +1,4 @@
-# naliferov.github.io
-Javascript sandbox and dev environment for small projects
+# varcraft
+🧙‍♂️ Javascript sandbox and dev environment for small projects.
+
+Make apps editing objects contain javascript.
