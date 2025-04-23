@@ -97,18 +97,25 @@ style.textContent = `
 const obHeader = mk('.object-browser-header', ob)
 mk(0, ob, 'br')
 
-const importDump = async (db, file) => {
+const getFileFromInput = async (fileInput) => {
   const r = new FileReader()
-  r.readAsText(file)
+  r.readAsText(fileInput)
   r.onload = async () => {
-    const objects = JSON.parse(r.result)
-    for (const storeName in objects) {
-      for (const object of objects[storeName]) {
-       await db.set({ storeName, id: object.id, value: object })
-      }
-    }
-    console.log('import complete')
+    //promise resolve
+    return r.result
   }
+}
+
+const importDump = async (db, objects) => {
+  for (const storeName in objects) {
+    for (const object of objects[storeName]) {
+      await db.set({ storeName, id: object.id, value: object })
+    }
+  }
+}
+
+const importDumpFromUrl = async (db, url) => {
+  await importDump(db, await (await fetch(url)).json())
 }
 
 const exportDump = async (db, storeNames = [], dumpName) => {
@@ -185,11 +192,9 @@ const opListManager = {
     fInput.style.marginLeft = '10px'
     fInput.addEventListener('change', async(e) => {
       const file = e.target.files[0]
-      if (!file) return    
-      importDump(dbSys, file)
+      if (!file) return   
+      //importDump(dbSys, await getFileFromInput(file))
     })
-
-    let inProgress = false
 
     const itemSystemExport = mk('.op-list-item', opList)
     itemSystemExport.textContent = 'Export system objects'
@@ -205,8 +210,8 @@ const opListManager = {
     fInput.style.marginLeft = '10px'
     fInput.addEventListener('change', async (e) => {
       const file = e.target.files[0]
-      if (!file) return    
-      await importDump(dbUser, file)
+      if (!file) return
+      //await importDump(dbUser, await getFileFromInput(file))
     })
 
     const itemUserExport = mk('.op-list-item', opList)
@@ -898,14 +903,8 @@ const runObjectCode = async (x) => {
 
 let sysMainObject = await systemObjectsRepository.getById('sys-main')
 if (!sysMainObject) {
-    const dump = await fetch('/dump.json')
-    //const dumpJson = await dump.json()
-    //mainObject = dumpJson.main
-
-  //sysMainObject = objectCreator.createMainObject('sys')
-  //await systemObjectsRepository.setObject(sysMainObject.id, sysMainObject)
-
-    //console.log(dump)
+    await importDumpFromUrl(dbSys, '/dump.json')
+    sysMainObject = await systemObjectsRepository.getById('sys-main')
 }
 const openedObjects = await objectsManager.getOpenedObjects()
 const isSysMainFound = Object.keys(openedObjects).find(id => id.trim() === 'sys-main')
@@ -924,6 +923,7 @@ await runObjectCode({
   objectsManager, tabManager, renderObjectName,
   systemObjectsRepository, userObjectsRepository
 })
+
         </script>
     </body>
 </html>
