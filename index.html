@@ -454,9 +454,10 @@ const createTabManager = (target, mk, width) => {
 
       let nextTab
 
-      if (tab === activeTab.tab) {
+      if (tab === activeTab) {
         const tabs = tabsBar.children
         const tabIndex = Array.from(tabs).indexOf(tab)
+        
         nextTab = tabIndex > 0 
           ? tabs[tabIndex - 1]
           : tabs[tabIndex + 1];
