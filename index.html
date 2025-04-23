@@ -435,14 +435,12 @@ const createTabManager = (target, mk, width) => {
 
   const openTab = (repo, object) => {
 
-    let tabForActivation
-
     const tab = mk(null, tabsBar)
     tab.className = 'tab active'
     tab.setAttribute('object-id', object.id)
     tab.addEventListener('click', () => {
-      console.log('click', tabForActivation)
-      activateTab(tabForActivation)
+      console.log('click', tab)
+      activateTab(tab)
       saveActiveTab(object.id)
     })
 
@@ -454,29 +452,25 @@ const createTabManager = (target, mk, width) => {
     tab.closeBtn.addEventListener('click', (e) => {
       e.stopPropagation()
 
+      let nextTab
+
       if (tab === activeTab.tab) {
         const tabs = tabsBar.children
         const tabIndex = Array.from(tabs).indexOf(tab)
-        const nextTab = tabIndex > 0 
+        nextTab = tabIndex > 0 
           ? tabs[tabIndex - 1]
           : tabs[tabIndex + 1];
-
-        if (nextTab) {
-          tabForActivation = { 
-            tab: nextTab,
-            tabView: nextTab.view 
-          }
-        }
       }
 
-      closeTab({ tab, tabView: tab.view })
+      closeTab(tab)
       //todo add second param as source which opened object before, in this case it's tabManager
       objectsManager.closeObject(object, 'tabManager')
 
-      if (tabForActivation) {
-        activateTab(tabForActivation)
-        saveActiveTab(tabForActivation.tab.getAttribute('object-id'))
+      if (nextTab) {
+        activateTab(nextTab)
+        saveActiveTab(nextTab.getAttribute('object-id'))
       } else {
+        console.warn('No next tab found')
         clearActiveTab()
       }
     })
@@ -511,29 +505,20 @@ const createTabManager = (target, mk, width) => {
       repo.setObject(object.id, object)
     })
 
-    //need refactor
-    tabForActivation = { tab, tabView: tab.view }
-    activateTab(tabForActivation)
-
-    return tabForActivation
+    activateTab(tab)
   }
-  const closeTab = (tabForDeactivation) => {
-    const { tab, tabView } = tabForDeactivation
+  const closeTab = (tab) => {
     tab.remove()
-    tabView.remove()
+    tab.view.remove()
   }
-  const activateTab = (tabForActivation) => {
+  const activateTab = (tab) => {
     if (activeTab) {
-      const { tab, tabView } = activeTab
-      tab.classList.remove('active')
-      tabView.classList.add('hidden')
+      activeTab.classList.remove('active')
+      activeTab.view.classList.add('hidden')
     }
-
-    const { tab, tabView } = tabForActivation
-    
     tab.classList.add('active')
-    tabView.classList.remove('hidden')
-    activeTab = tabForActivation
+    tab.view.classList.remove('hidden')
+    activeTab = tab
   }
   const saveActiveTab = (id) => kvRepository.setKey('activeTabId', id)
   const clearActiveTab = () => kvRepository.delKey('activeTabId')
@@ -542,8 +527,7 @@ const createTabManager = (target, mk, width) => {
     if (!value) return
 
     const tab = tabsBar.querySelector(`[object-id="${value}"]`)
-    const tabView = tab.view
-    if (tab && tabView) activateTab({ tab, tabView })
+    activateTab(tab)
   }
 
   return { openTab, saveActiveTab, restoreLastActiveTab }
