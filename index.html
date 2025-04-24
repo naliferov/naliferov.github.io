@@ -121,9 +121,7 @@ const importDump = async (db, objects) => {
   }
 }
 
-const importDumpFromUrl = async (db, url) => {
-  await importDump(db, await (await fetch(url)).json())
-}
+const importDumpFromUrl = async (db, url) => await importDump(db, await (await fetch(url)).json())
 
 const exportDump = async (db, storeNames = [], dumpName) => {
   const dump = {}
