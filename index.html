@@ -97,19 +97,26 @@ style.textContent = `
 const obHeader = mk('.object-browser-header', ob)
 mk(0, ob, 'br')
 
-const getFileFromInput = async (fileInput) => {
+const readFileFromInput = async (fileInput) => {
+  const { promise, resolve, reject } = Promise.withResolvers()  
   const r = new FileReader()
   r.readAsText(fileInput)
-  r.onload = async () => {
-    //promise resolve
-    return r.result
-  }
+  r.onload = async () => resolve(r.result)
+  r.onerror = reject
+  return promise
 }
-
 const importDump = async (db, objects) => {
   for (const storeName in objects) {
-    for (const object of objects[storeName]) {
-      await db.set({ storeName, id: object.id, value: object })
+    const store = objects[storeName]
+    
+    if (Array.isArray(store)) {
+      for (const object of store) {
+        await db.set({ storeName, id: object.id, value: object })
+      }
+    } else {
+      for (const key in store) {
+        await db.set({ storeName, id: key, value: store[key] })
+      }
     }
   }
 }
@@ -120,9 +127,20 @@ const importDumpFromUrl = async (db, url) => {
 
 const exportDump = async (db, storeNames = [], dumpName) => {
   const dump = {}
+
   for (const storeName of storeNames) {
-    dump[storeName] = await db.getAll({ storeName })
+    if (storeName === 'kv') {
+      const o = {}
+      const keys = await db.getKeys({ storeName })
+      for (const key of keys) {
+        o[key] = await db.get({ storeName, id: key })
+      }
+      dump[storeName] = o
+    } else {
+      dump[storeName] = await db.getAll({ storeName })
+    }
   }
+
   const blob = new Blob([JSON.stringify(dump)], { type: 'application/json' })
   const a = document.createElement('a')
   a.href = URL.createObjectURL(blob)
@@ -191,9 +209,7 @@ const opListManager = {
     fInput.type = 'file'
     fInput.style.marginLeft = '10px'
     fInput.addEventListener('change', async(e) => {
-      const file = e.target.files[0]
-      if (!file) return   
-      //importDump(dbSys, await getFileFromInput(file))
+      importDump(dbSys, JSON.parse(await readFileFromInput(e.target.files[0])))
     })
 
     const itemSystemExport = mk('.op-list-item', opList)
@@ -209,9 +225,7 @@ const opListManager = {
     fInput.type = 'file'
     fInput.style.marginLeft = '10px'
     fInput.addEventListener('change', async (e) => {
-      const file = e.target.files[0]
-      if (!file) return
-      //await importDump(dbUser, await getFileFromInput(file))
+      importDump(dbUser, JSON.parse(await readFileFromInput(e.target.files[0])))
     })
 
     const itemUserExport = mk('.op-list-item', opList)
@@ -583,6 +597,14 @@ class IndexedDb {
     const { storeName = 'default' } = x
     return new Promise((resolve, reject) => {
       const rq = this.db.transaction(storeName, 'readonly').objectStore(storeName).getAll()
+      rq.onsuccess = () => resolve(rq.result)
+      rq.onerror = () => reject(rq.error)
+    })
+  }
+  async getKeys(x) {
+    const { storeName = 'default' } = x
+    return new Promise((resolve, reject) => {
+      const rq = this.db.transaction(storeName, 'readonly').objectStore(storeName).getAllKeys()
       rq.onsuccess = () => resolve(rq.result)
       rq.onerror = () => reject(rq.error)
     })
