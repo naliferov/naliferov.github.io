@@ -396,58 +396,55 @@ const ulid = (() => {
   };
 })();
 
-//Base >> viewManager
-//tabManager
-//windowsManager
-const createTabManager = (target, mk, width) => {
+const tabManager = {
+  activeTab: null,
+  init(target, mk, width) {
+    const tabsContainer = mk('tabs-container', target)
+    tabsContainer.style.width = width
+    const style = mk(null, tabsContainer, 'style')
+    style.innerHTML = `
+      #tabs-bar {
+        display: flex;
+        background: #f3f3f3;
+      }
+      .tab {
+        display: flex;
+        align-items: center;
+        padding: 8px;
+        cursor: pointer;
+        background: #e4e4e4;
+      }
+      .tab.active {
+        background: #FFFFFF;
+      }
+      .tab-name {
+        font-family: Roboto, sans-serif;
+        margin-right: 3px;
+        color: #333333;
+      }
+      .tab-view.hidden {
+        display: none;
+      } 
+      .object-code {
+        font-family: 'JetBrains Mono', monospace;
+      }
+      #close-tab-btn {
+        width: 18px;
+        height: 18px;
+        stroke: currentColor;
+      }
+    `
 
-  const tabsContainer = mk('tabs-container', target)
-  tabsContainer.style.width = width
-  const style = mk(null, tabsContainer, 'style')
-  style.innerHTML = `
-    #tabs-bar {
-      display: flex;
-      background: #f3f3f3;
-    }
-    .tab {
-      display: flex;
-      align-items: center;
-      padding: 8px;
-      cursor: pointer;
-      background: #e4e4e4;
-    }
-    .tab.active {
-      background: #FFFFFF;
-    }
-    .tab-name {
-      font-family: Roboto, sans-serif;
-      margin-right: 3px;
-      color: #333333;
-    }
-    .tab-view.hidden {
-      display: none;
-    } 
-    .object-code {
-      font-family: 'JetBrains Mono', monospace;
-    }
-    #close-tab-btn {
-      width: 18px;
-      height: 18px;
-      stroke: currentColor;
-    }
-  `
-  
-  const tabsBar = mk('tabs-bar', tabsContainer)
-  const tabsBarHeight = 35
-  const tabsView = mk('tabs-view', tabsContainer)
-  tabsView.style.height = window.innerHeight - tabsBarHeight + 'px' 
-  tabsView.style.overflow = 'scroll'
+    this.tabsBarHeight = 35
+    this.tabsBar = mk('tabs-bar', tabsContainer)
 
-  let activeTab
+    this.tabsView = mk('tabs-view', tabsContainer)
+    this.tabsView.style.height = window.innerHeight - this.tabsBarHeight + 'px' 
+    this.tabsView.style.overflow = 'scroll'
+  },
+  openTab(repo, object) {
 
-  const openTab = (repo, object) => {
-
-    const tab = mk(null, tabsBar)
+    const tab = mk(null, this.tabsBar)
     tab.className = 'tab active'
     tab.setAttribute('object-id', object.id)
     tab.addEventListener('click', () => {
@@ -459,7 +456,7 @@ const createTabManager = (target, mk, width) => {
     tab.name = mk(null, tab)
     tab.name.className = 'tab-name'
     tab.name.textContent = object.data.name
-    
+
     tab.closeBtn = mk('close-tab-btn', tab)
     tab.closeBtn.addEventListener('click', (e) => {
       e.stopPropagation()
@@ -492,10 +489,12 @@ const createTabManager = (target, mk, width) => {
         <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"></path>
       </svg>
     `
-    tab.view = mk('.tab-view', tabsView)
+    tab.view = mk('.tab-view', this.tabsView)
+
+    //dataObject, openerObject, tab.view
 
     const pre = mk('object-code', tab.view, 'div')
-    pre.style.height = window.innerHeight - tabsBarHeight + 'px' 
+    pre.style.height = window.innerHeight - this.tabsBarHeight + 'px' 
     const editor = monaco.editor.create(pre, {
       value: object.data.code, 
       language: 'javascript',
@@ -503,7 +502,7 @@ const createTabManager = (target, mk, width) => {
       automaticLayout: true, 
       fontSize: 15
     })
-    
+
     const openedObjects = objectsManager.getOpenedObjects()
     const pos = openedObjects[object.id]
     if (pos && typeof pos === 'object') editor.revealPositionInCenter(pos)
@@ -518,36 +517,37 @@ const createTabManager = (target, mk, width) => {
       repo.setObject(object.id, object)
     })
 
-    activateTab(tab)
-  }
-  const closeTab = (tab) => {
+    this.activateTab(tab)
+  },
+  closeTab(tab) {
     tab.remove()
     tab.view.remove()
-  }
-  const activateTab = (tab) => {
-    if (activeTab) {
-      activeTab.classList.remove('active')
-      activeTab.view.classList.add('hidden')
+  },
+  activateTab(tab) {
+    if (this.activeTab) {
+      this.activeTab.classList.remove('active')
+      this.activeTab.view.classList.add('hidden')
     }
     tab.classList.add('active')
     tab.view.classList.remove('hidden')
-    activeTab = tab
-  }
-  const saveActiveTab = (id) => kvRepository.setKey('activeTabId', id)
-  const clearActiveTab = () => kvRepository.delKey('activeTabId')
-  const restoreLastActiveTab = async () => {
+    this.activeTab = tab
+  },
+  saveActiveTab(id) {
+    kvRepository.setKey('activeTabId', id)
+  },
+  clearActiveTab() {
+    kvRepository.delKey('activeTabId')
+  },
+  async restoreLastActiveTab() {
     const value = await kvRepository.getKey('activeTabId')
     if (!value) return
 
-    const tab = tabsBar.querySelector(`[object-id="${value}"]`)
-    activateTab(tab)
+    const tab = this.tabsBar.querySelector(`[object-id="${value}"]`)
+    this.activateTab(tab)
   }
-
-  return { openTab, saveActiveTab, restoreLastActiveTab }
 }
-
 const tabManagerWidth = `calc(100% - ${obWidth + obPadding * 2}px)`
-const tabManager = createTabManager(app, mk, tabManagerWidth)
+tabManager.init(app, mk, tabManagerWidth)
 //const objectsView = mk('objects-view', app)
 
 class IndexedDb {  
