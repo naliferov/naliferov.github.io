@@ -449,8 +449,8 @@ const tabManager = {
     tab.setAttribute('object-id', object.id)
     tab.addEventListener('click', () => {
       console.log('click', tab)
-      activateTab(tab)
-      saveActiveTab(object.id)
+      this.activateTab(tab)
+      this.saveActiveTab(object.id)
     })
 
     tab.name = mk(null, tab)
@@ -463,8 +463,8 @@ const tabManager = {
 
       let nextTab
 
-      if (tab === activeTab) {
-        const tabs = tabsBar.children
+      if (tab === this.activeTab) {
+        const tabs = this.tabsBar.children
         const tabIndex = Array.from(tabs).indexOf(tab)
         
         nextTab = tabIndex > 0 
@@ -472,16 +472,15 @@ const tabManager = {
           : tabs[tabIndex + 1];
       }
 
-      closeTab(tab)
+      this.closeTab(tab)
       //todo add second param as source which opened object before, in this case it's tabManager
       objectsManager.closeObject(object, 'tabManager')
 
       if (nextTab) {
-        activateTab(nextTab)
-        saveActiveTab(nextTab.getAttribute('object-id'))
+        this.activateTab(nextTab)
+        this.saveActiveTab(nextTab.getAttribute('object-id'))
       } else {
-        console.warn('No next tab found')
-        clearActiveTab()
+        this.clearActiveTab()
       }
     })
     tab.closeBtn.innerHTML += `
