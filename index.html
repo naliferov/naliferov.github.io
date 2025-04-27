@@ -147,6 +147,8 @@ const exportDump = async (db, storeNames = [], dumpName) => {
   URL.revokeObjectURL(a.href)
 }
 
+const opPaste = async (object, repo) => {}
+
 const opListManager = {
   opList: null,
   createOpList() {
@@ -474,7 +476,7 @@ const tabManager = {
 
       this.closeTab(tab)
       //todo add second param as source which opened object before, in this case it's tabManager
-      objectsManager.closeObject(object, 'tabManager')
+      objectManager.closeObject(object, 'tabManager')
 
       if (nextTab) {
         this.activateTab(nextTab)
@@ -502,7 +504,7 @@ const tabManager = {
       fontSize: 15
     })
 
-    const openedObjects = objectsManager.getOpenedObjects()
+    const openedObjects = objectManager.getOpenedObjects()
     const pos = openedObjects[object.id]
     if (pos && typeof pos === 'object') editor.revealPositionInCenter(pos)
 
@@ -510,7 +512,7 @@ const tabManager = {
       if (!object.id) return
       
       const pos = editor.getPosition()
-      objectsManager.openObject(object, pos)
+      objectManager.openObject(object, pos)
       object.data.code = editor.getValue()
 
       repo.setObject(object.id, object)
@@ -646,6 +648,24 @@ const createObjectsRepository = (child = {}) => createRepository({
   async updateObjectData(objectId, data) {
     await this.db.query(`UPDATE public.${this.table} SET data = $1 WHERE id = $2`, [data, objectId])
   },
+  async getPrevObjects(objectId) {
+    const object = await this.db.get({ storeName: this.table, id: objectId })
+    if (!object || !object.prev_id) return []
+    
+    const objects = []
+
+    let currentId = object.prev_id
+    while (currentId) {
+      const object = await this.db.get({ storeName: this.table, id: currentId })
+      if (!object) { 
+        console.warn(`No record found with id=${currentId}`)
+        break
+      }
+      objects.push(object)
+      currentId = object.prev_id
+    }
+    return objects
+  },
   async getNextObjects(objectId) {
     const object = await this.db.get({ storeName: this.table, id: objectId })
     if (!object || !object.next_id) return []
@@ -711,7 +731,7 @@ const objectCreator = {
   }
 }
 
-const objectsManager = {
+const objectManager = {
   openedObjectsIds: {},
   async init() {
     const v = await kvRepository.getKey('openedObjectsIds')
@@ -736,7 +756,7 @@ const objectsManager = {
     kvRepository.setKey('openedObjectsIds', this.openedObjectsIds)
   },
 }
-await objectsManager.init()
+await objectManager.init()
 
 const createNewObject = async (dom, repo, newObject) => {
 
@@ -768,6 +788,21 @@ const createNewObject = async (dom, repo, newObject) => {
   renderObjectName(newObject, children, repo)
 }
 
+const clipboard = {
+  objects: [],
+  isEmpty() {
+    return this.objects.length === 0
+  },
+  addObject(object) {
+    this.objects.push(object)
+  },
+  getObjects() {
+    return this.objects
+  },
+  clear() {
+    this.objects = []
+  }
+}
 
 const renderObjectName = (object, target, repo) => {
   const dom = mk(object.id, target)
@@ -775,10 +810,10 @@ const renderObjectName = (object, target, repo) => {
   dom.name = mk(null, dom)
   dom.name.innerText = object.data.name
   dom.name.addEventListener('click', async (e) => {
-    if (objectsManager.isObjectOpened(object.id)) return
+    if (objectManager.isObjectOpened(object.id)) return
     tabManager.openTab(repo, object)
     tabManager.saveActiveTab(object.id)
-    objectsManager.openObject(object)
+    objectManager.openObject(object)
   })
   dom.name.addEventListener('contextmenu', (e) => {
     e.preventDefault()
@@ -880,7 +915,93 @@ const renderObjectName = (object, target, repo) => {
       //todo delete from openedObjectsIds
       //from active tab id, or check active tab id if exists such object
     })
+    mkOp('Cut').addEventListener('click', async () => {
+        opListManager.removeOpList()
+        clipboard.addObject({ object, dom })
+    })
+    if (!clipboard.isEmpty()) {
+      mkOp('Paste').addEventListener('click', async () => {
+        opListManager.removeOpList()
+
+        const { object: movObject, dom: movingObjectDom } = clipboard.getObjects()[0]
+        if (!movObject) return
+        const childrenDiv = dom.getElementsByClassName('children')[0]
+        if (!childrenDiv) return
+
+        const children = childrenDiv.children
+        if (!children) return
+        for (let i = 0; i < children.length; i++) {
+          const child = children[i]
+          if (child.id === movObject.id) {
+            console.log('moving object already in children')
+            clipboard.clear()
+            return
+          }
+        }
+
+        const prevObject = movObject.prev_id ? await repo.getById(movObject.prev_id) : null
+        const nextObject = movObject.next_id ? await repo.getById(movObject.next_id) : null
+        const parentObject = movObject.parent_id ? await repo.getById(movObject.parent_id) : null
+
+        if (parentObject) {
+          parentObject.child_id = nextObject ? nextObject.id : null
+          await repo.setObject(parentObject.id, parentObject)
+        }
+
+        if (prevObject && nextObject) {
+          prevObject.next_id = nextObject.id
+          await repo.setObject(prevObject.id, prevObject)
+          
+          nextObject.prev_id = prevObject.id
+          await repo.setObject(nextObject.id, nextObject)
+
+        } else if (prevObject) {
+          prevObject.next_id = null
+          await repo.setObject(prevObject.id, prevObject)
+
+        } else if (nextObject) {
+          nextObject.prev_id = null
+          await repo.setObject(nextObject.id, nextObject)
+        }
+
+        //INSERT MOVING OBJECT
+        let lastChild = null
+        if (children.length) {
+
+          lastChild = children[children.length - 1]
+          if (!lastChild) return
+
+          const lastChildObject = await repo.getById(lastChild.id)
+          if (!lastChildObject) {
+            console.warn(`No last child object found with id=${lastChild.id}`)
+            return
+          }
+          lastChildObject.next_id = movObject.id
+          movObject.prev_id = lastChildObject.id
+
+          console.log(lastChildObject)
+          await repo.setObject(lastChildObject.id, lastChildObject)
+          await repo.setObject(movObject.id, movObject)
+        } else {
+          const parentObject = await repo.getById(object.id)
+          if (!parentObject) {
+            console.warn(`No parent object found with id=${object.id}`)
+            return
+          }
+          parentObject.child_id = movObject.id
+          movObject.parent_id = parentObject.id
+          movObject.prev_id = null
+          movObject.next_id = null
+          await repo.setObject(parentObject.id, parentObject)
+          await repo.setObject(movObject.id, movObject)
+        }
+        
+        childrenDiv.append(movingObjectDom)
+        clipboard.clear()
+      })
+    }
   })
+
 
   const children = mk(null, dom)
   children.className = 'children'
@@ -888,7 +1009,7 @@ const renderObjectName = (object, target, repo) => {
   return { objectDom: dom, children }
 }
 const runObjectCode = async (x) => {
-  const { object, objectBrowser, objectsManager, tabManager, 
+  const { object, objectBrowser, objectManager, tabManager, 
     renderObjectName, systemObjectsRepository, userObjectsRepository } = x
   const code = `export default async ($) => { 
     ${object.data.code}
@@ -897,7 +1018,7 @@ const runObjectCode = async (x) => {
   try {
     const m = (await import(URL.createObjectURL(blob)))
     m.default({ 
-      o: object, objectBrowser, objectsManager, tabManager, renderObjectName, 
+      o: object, objectBrowser, objectManager, tabManager, renderObjectName, 
       systemObjectsRepository, userObjectsRepository
     })
   } catch (e) {
@@ -910,7 +1031,7 @@ if (!sysMainObject) {
     await importDumpFromUrl(dbSys, '/dump.json')
     sysMainObject = await systemObjectsRepository.getById('sys-main')
 }
-const openedObjects = await objectsManager.getOpenedObjects()
+const openedObjects = await objectManager.getOpenedObjects()
 const isSysMainFound = Object.keys(openedObjects).find(id => id.trim() === 'sys-main')
 if (isSysMainFound) tabManager.openTab(systemObjectsRepository, sysMainObject)
 
@@ -924,7 +1045,7 @@ await renderObjectName(sysMainObject, ob.systemSection.childrenDiv, systemObject
 await runObjectCode({
   object: sysMainObject, 
   objectBrowser: ob,
-  objectsManager, tabManager, renderObjectName,
+  objectManager, tabManager, renderObjectName,
   systemObjectsRepository, userObjectsRepository
 })
 
