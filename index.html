@@ -51,7 +51,7 @@ const safeModePage = async () => {
   const t = db.transaction('objects', 'readonly').objectStore('objects').get('sys-main')
   t.onsuccess = () => {
     const l = localStorage
-    const sysMainObject = t.result
+    const sysMain = t.result
 
     const p = document.createElement('pre')
     p.style.whiteSpace = 'pre-wrap'
@@ -62,11 +62,11 @@ const safeModePage = async () => {
     p.style.height = window.innerHeight + 'px'
     p.style.overflow = 'scroll'
     p.contentEditable = true
-    p.innerText = sysMainObject.data.code
+    p.innerText = sysMain.data.code
     p.addEventListener('keyup', (e) => {
       e.preventDefault()
-      sysMainObject.data.code = p.innerText
-      db.transaction('objects', 'readwrite').objectStore('objects').put(sysMainObject, sysMainObject.id)
+      sysMain.data.code = p.innerText
+      db.transaction('objects', 'readwrite').objectStore('objects').put(sysMain, sysMain.id)
     })
     p.addEventListener('scroll', (e) => l.setItem('sys-main-scroll', e.target.scrollTop))
     document.body.appendChild(p)
@@ -80,7 +80,6 @@ const main = () => {
   else mainPage()
 }
 main()
-
         </script>
     </body>
 </html>
