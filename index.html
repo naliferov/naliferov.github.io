@@ -10,12 +10,17 @@
         <script type="module">
 const mainPage = async () => {
   const r = indexedDB.open('sys')
-  r.onsuccess = () => {
-    const t = r.result.transaction('objects', 'readonly').objectStore('objects').get('sys-main')
+  const storageName = 'objects'
+
+  r.onsuccess = async() => {
+    const t = r.result.transaction(storageName, 'readonly').objectStore(storageName).get('sys-main')
+
     t.onsuccess = async () => {
-      const o = t.result
+      let o = t.result
       if (!o) {
-        //get sys-main from dump
+        const { objects } = await(await fetch('/dump.json')).json()
+        o = objects.find(o => o.id === 'sys-main')
+        r.result.transaction(storageName, 'readwrite').objectStore(storageName).put(o, o.id)
       }
       if (o) {
         (await import(URL.createObjectURL(new Blob([
@@ -28,9 +33,9 @@ const mainPage = async () => {
   }
   r.onupgradeneeded = () => {
     const db = r.result
-    const storageName = 'objects'
-    if (!db.objectStoreNames.contains(storageName)) {
-    }
+    
+    //todo make it good for user db
+    if (!db.objectStoreNames.contains(storageName)) db.createObjectStore(storageName)
   }
 }
 const safeModePage = async () => {
