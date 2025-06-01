@@ -13,30 +13,30 @@ const mainPage = async () => {
   const storageName = 'objects'
 
   r.onsuccess = async() => {
-    const t = r.result.transaction(storageName, 'readonly').objectStore(storageName).get('sys-main')
+    const db = r.result
+    const t = db.transaction(storageName, 'readonly').objectStore(storageName).get('sys-main')
 
     t.onsuccess = async () => {
       let o = t.result
       if (!o) {
         const { objects } = await(await fetch('/dump.json')).json()
+        for (const obj of objects) {
+          db.transaction(storageName, 'readwrite').objectStore(storageName).put(obj, obj.id)
+        }
         o = objects.find(o => o.id === 'sys-main')
-        r.result.transaction(storageName, 'readwrite').objectStore(storageName).put(o, o.id)
       }
-      if (o) {
-        (await import(URL.createObjectURL(new Blob([
-          `export default async ($) => { 
-            ${o.data.code}
-          }`
-        ], { type: 'application/javascript' })))).default()
-      }
+      (await import(URL.createObjectURL(new Blob([
+        `export default async ($) => { 
+          ${o.data.code}
+        }`
+      ], { type: 'application/javascript' })))).default()
     }
   }
   r.onupgradeneeded = () => {
     const db = r.result
-    
-    //todo make it good for user db
     if (!db.objectStoreNames.contains(storageName)) db.createObjectStore(storageName)
   }
+  r.onerror = () => console.error(r.error)
 }
 const safeModePage = async () => {
 
@@ -57,14 +57,16 @@ const safeModePage = async () => {
   t.onsuccess = () => {
     const l = localStorage
     const sysMain = t.result
-
     const p = document.createElement('pre')
-    p.style.fontFamily = 'monospace'
-    p.style.fontSize = '14px'
-    p.style.padding = '10px'
-    p.style.backgroundColor = '#f0f0f0'
-    p.style.height = window.innerHeight + 'px'
-    p.style.overflow = 'scroll'
+    const s = p.style
+
+    s.fontFamily = 'monospace'
+    s.fontSize = '14px'
+    s.padding = '10px'
+    s.backgroundColor = '#f0f0f0'
+    s.height = window.innerHeight + 'px'
+    s.overflow = 'scroll'
+
     p.contentEditable = true
     p.innerText = sysMain.data.code
     p.addEventListener('keyup', (e) => {
