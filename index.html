@@ -27,7 +27,7 @@ const mainPage = async () => {
       }
       (await import(URL.createObjectURL(new Blob([
         `export default async ($) => { 
-          ${o.data.code}
+          ${o.code}
         }`
       ], { type: 'application/javascript' })))).default()
     }
@@ -68,10 +68,10 @@ const safeModePage = async () => {
     s.overflow = 'scroll'
 
     p.contentEditable = true
-    p.innerText = sysMain.data.code
+    p.innerText = sysMain.code
     p.addEventListener('keyup', (e) => {
       e.preventDefault()
-      sysMain.data.code = p.innerText
+      sysMain.code = p.innerText
       db.transaction('objects', 'readwrite').objectStore('objects').put(sysMain, sysMain.id)
     })
     p.addEventListener('scroll', (e) => l.setItem('sys-main-scroll', e.target.scrollTop))
