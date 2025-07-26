@@ -39,13 +39,12 @@ const mainPage = async () => {
   r.onerror = () => console.error(r.error)
 }
 const safeModePage = async () => {
-
   const { promise: promiseDb, resolve: resolveDb, reject: rejectDb } = Promise.withResolvers()
 
-  const rq = indexedDB.open('sys')
-  rq.onsuccess = () => resolveDb(rq.result)
-  rq.onupgradeneeded = () => {
-    const db = rq.result
+  const r = indexedDB.open('sys')
+  r.onsuccess = () => resolveDb(rq.result)
+  r.onupgradeneeded = () => {
+    const db = r.result
     const storageName = 'objects'
     if (!db.objectStoreNames.contains(storageName)) {
       resolveDb(db)
