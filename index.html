@@ -8,57 +8,33 @@
     </head>
     <body>
         <script type="module">
+const getRedisInstance = async () => {
+  const { Redis } = await import('https://esm.sh/@upstash/redis')
+  return new Redis({
+    url: 'https://holy-redfish-7937.upstash.io',
+    token: localStorage.getItem('token') || 'Ah8BAAIgcDH8iJl1rQK-FZD7U3lrmcixchbsva9z2HQRDxtGlxLOrA',
+  })
+}
+
 const mainPage = async () => {
-  const r = indexedDB.open('sys')
-  const storageName = 'objects'
+  const redis = await getRedisInstance()
+  const o = await redis.hget('sys', 'sys-main')
 
-  r.onsuccess = async() => {
-    const db = r.result
-    const t = db.transaction(storageName, 'readonly').objectStore(storageName).get('sys-main')
-
-    t.onsuccess = async () => {
-      let o = t.result
-      if (!o) {
-        const { objects } = await(await fetch('/dump.json')).json()
-        for (const obj of objects) {
-          db.transaction(storageName, 'readwrite').objectStore(storageName).put(obj, obj.id)
-        }
-        o = objects.find(o => o.id === 'sys-main')
-      }
-      (await import(URL.createObjectURL(new Blob([
-        `export default async ($) => { 
-          ${o.code}
-        }`
-      ], { type: 'application/javascript' })))).default()
-    }
-  }
-  r.onupgradeneeded = () => {
-    const db = r.result
-    if (!db.objectStoreNames.contains(storageName)) db.createObjectStore(storageName)
-  }
-  r.onerror = () => console.error(r.error)
+  const code = `export default async ($) => { 
+    ${o.code}
+  }`
+  const url = URL.createObjectURL(new Blob([code], { type: 'application/javascript' }))
+  const { default: main } = await import(url)
+  main()
 }
 const safeModePage = async () => {
-  const { promise: promiseDb, resolve: resolveDb, reject: rejectDb } = Promise.withResolvers()
-
-  const r = indexedDB.open('sys')
-  r.onsuccess = () => resolveDb(rq.result)
-  r.onupgradeneeded = () => {
-    const db = r.result
-    const storageName = 'objects'
-    if (!db.objectStoreNames.contains(storageName)) {
-      resolveDb(db)
-    }
-  }
-  const db = await promiseDb
-
-  const t = db.transaction('objects', 'readonly').objectStore('objects').get('sys-main')
-  t.onsuccess = () => {
     const l = localStorage
-    const sysMain = t.result
-    const p = document.createElement('pre')
-    const s = p.style
 
+    const redis = await getRedisInstance()
+    const o = await redis.hget('sys', 'sys-main')
+
+    const pre = document.createElement('pre')
+    const s = pre.style
     s.fontFamily = 'monospace'
     s.fontSize = '14px'
     s.padding = '10px'
@@ -66,18 +42,18 @@ const safeModePage = async () => {
     s.height = window.innerHeight + 'px'
     s.overflow = 'scroll'
 
-    p.contentEditable = true
-    p.innerText = sysMain.code
-    p.addEventListener('keyup', (e) => {
+    pre.contentEditable = true
+
+    pre.innerText = o.code
+    pre.addEventListener('keyup', async (e) => {
       e.preventDefault()
-      sysMain.code = p.innerText
-      db.transaction('objects', 'readwrite').objectStore('objects').put(sysMain, sysMain.id)
+      o.code = pre.innerText
+      await redis.hset('sys', { 'sys-main': o })
     })
-    p.addEventListener('scroll', (e) => l.setItem('sys-main-scroll', e.target.scrollTop))
-    document.body.appendChild(p)
-    p.scrollTop = l.getItem('sys-main-scroll')
-  }
-  t.onerror = () => console.error(t.error)
+
+    pre.addEventListener('scroll', (e) => l.setItem('sys-main-scroll', e.target.scrollTop))
+    document.body.appendChild(pre)
+    pre.scrollTop = l.getItem('sys-main-scroll')
 }
 
 const main = () => {
