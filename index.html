@@ -19,7 +19,6 @@ const getRedisInstance = async () => {
 const mainPage = async () => {
   const redis = await getRedisInstance()
   const o = await redis.hget('sys', 'sys-main')
-
   const code = `export default async ($) => { 
     ${o.code}
   }`
