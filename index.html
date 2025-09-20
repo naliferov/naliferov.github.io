@@ -50,9 +50,9 @@ const safeModePage = async () => {
       await redis.hset('sys', { 'sys-main': o })
     })
 
-    pre.addEventListener('scroll', (e) => l.setItem('sys-main-scroll', e.target.scrollTop))
+    pre.addEventListener('scroll', (e) => l.setItem('sysMainScroll', e.target.scrollTop))
     document.body.appendChild(pre)
-    pre.scrollTop = l.getItem('sys-main-scroll')
+    pre.scrollTop = l.getItem('sysMainScroll')
 }
 
 const main = () => {
