@@ -220,7 +220,7 @@ x.createCMDs = (assign = {}) => {
       desc: 'Function for deleting objects from the list by name. Example: del {objectName}'
     },
     delById: {
-      f: async ([ id ]) => await d(id),
+      f: async ([ id ]) => await x.del(id),
       desc: 'Function for delete object by id. Example: mv oldName newName'
     },
     mv: {
