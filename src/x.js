@@ -1,13 +1,18 @@
-//GET REDIS INSTANCE
-
 const x = {}
 
-const getRedisInstance = async () => {
-    const { Redis } = await import('https://esm.sh/@upstash/redis')
-    return new Redis({
-      url: 'https://holy-redfish-7937.upstash.io',
-      token: localStorage.getItem('token') || 'Ah8BAAIgcDH8iJl1rQK-FZD7U3lrmcixchbsva9z2HQRDxtGlxLOrA',
-    })
+//REDIS, ULID, VUE
+{
+  const [ { Redis }, { ulid }, Vue ] = await Promise.all([
+    import('https://esm.sh/@upstash/redis'),
+    import('https://esm.sh/ulid?bundle'),
+    import('https://unpkg.com/vue@3/dist/vue.esm-browser.prod.js')
+  ])
+  x.redis = new Redis({
+    url: 'https://holy-redfish-7937.upstash.io',
+    token: localStorage.getItem('token') || 'Ah8BAAIgcDH8iJl1rQK-FZD7U3lrmcixchbsva9z2HQRDxtGlxLOrA',
+  })
+  x.ulid = ulid
+  x.vue = Vue
 }
 
 //FONTS
@@ -28,15 +33,6 @@ const getRedisInstance = async () => {
   }
   document.head.append(requireScript)
   await editorIsReady
-}
-//VUE AND ULID
-{
-  const [ { ulid }, Vue ] = await Promise.all([
-    import('https://esm.sh/ulid?bundle'),
-    import('https://unpkg.com/vue@3/dist/vue.esm-browser.prod.js')
-  ])
-  x.ulid = ulid
-  x.vue = Vue
 }
 
 {
@@ -68,12 +64,12 @@ x.openedObjects = x.vue.ref([])
 x.showSideBar = x.vue.ref(true)
 x.showFileInput = x.vue.ref(false)
 
-x.set = async (k, v) => await $.redis.hset(x.track.value, { [k]: v } )
-x.get = async (k) => await $.redis.hget(x.track.value, k)
-x.del = async (k) => await $.redis.hdel(x.track.value, k)
+x.set = async (k, v) => await x.redis.hset(x.track.value, { [k]: v } )
+x.get = async (k) => await x.redis.redis.hget(x.track.value, k)
+x.del = async (k) => await x.redis.redis.hdel(x.track.value, k)
 
 {
-  const arr = Object.values(await $.redis.hgetall(x.track.value))
+  const arr = Object.values(await x.redis.hgetall(x.track.value))
   arr.sort((a, b) => (a.name > b.name) - (a.name < b.name));
   x.sys.value = Object.fromEntries(arr.map(o => [o.id, o]))
 }
@@ -115,12 +111,12 @@ x.del = async (k) => await $.redis.hdel(x.track.value, k)
 }
 
 x.createFnFromCode = async (codeStr, name = '') => {
-  const code = `export default async ($) => { 
-    ${codeStr} 
-    //# sourceURL=dynamic/${name}
-  }`
-  const blob = new Blob([code], { type: 'application/javascript' })
-  return (await import(URL.createObjectURL(blob))).default
+  // const code = `export default async ($) => { 
+  //   ${codeStr} 
+  //   //# sourceURL=dynamic/${name}
+  // }`
+  // const blob = new Blob([code], { type: 'application/javascript' })
+  // return (await import(URL.createObjectURL(blob))).default
 }
 
 x.runCode = async (code, deps, name) => {
@@ -132,7 +128,7 @@ x.runCode = async (code, deps, name) => {
       ...deps
     })
   } catch (e) {
-    console.log(`runCode error`, code)
+    console.error(`runCode erro >> `, e, code)
   }
 }
 
@@ -327,7 +323,7 @@ x.readFileAsBase64 = async (file) => {
 {
   const { createApp, ref, onMounted } = x.vue
 
-  const Frame = await x.runByName('frame', { updateObject: x.updateObject })
+  const Frame = (await import('./frame.js')).default
 
   const ObjectManager = {
     name: 'ObjectManager',
@@ -625,12 +621,7 @@ x.readFileAsBase64 = async (file) => {
       </div> 
     `
   }
-
-const appContainer = document.createElement('div')
-  appContainer.id = 'app'
-  document.body.append(appContainer)
-  createApp(MainComponent)
-  x.app
+  x.app = createApp(MainComponent)
 }
 
 export default x

@@ -11,10 +11,14 @@
     </head>
     <body>
         <script type="module">
-          {
+          (async () => {
+            const appContainer = document.createElement('div')
+            appContainer.id = 'app'
+            document.body.append(appContainer)
+
             const { default: x } = await import('./src/x.js')
-            //x.app()
-          }
+            x.app.mount(appContainer)
+          })()            
         </script>
     </body>
 </html>

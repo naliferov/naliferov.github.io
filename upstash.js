@@ -1,5 +1,3 @@
-
-
 import { Redis } from '@upstash/redis'
 import fs from 'node:fs'
 
@@ -22,8 +20,11 @@ async function downloadAllSysKeysToFiles() {
   const entries = await redis.hgetall('sys')
 
   for (const [key, value] of Object.entries(entries)) {
-    const filePath = `./src/${key}.js`
-    fs.writeFileSync(filePath, JSON.stringify(value), 'utf8')
+    if (!value.code) continue
+
+    //console.log('name', value.name, value?.code?.length)
+    const filePath = `./src/${value.name}.js`
+    fs.writeFileSync(filePath, value.code, 'utf8')
   }
 }
 
