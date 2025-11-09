@@ -95,10 +95,10 @@ x.del = async (k) => await x.redis.redis.hdel(x.track.value, k)
 {
   const key = 'showSideBar'
 
-  // vue.watch(
-  //   x.showSideBar,
-  //   (flag) => flag ? x.kvRepo.on(key) : x.kvRepo.off(key),
-  // )
+  vue.watch(
+    x.showSideBar,
+    (flag) => flag ? x.kvRepo.on(key) : x.kvRepo.off(key),
+  )
 }
 
 {
