@@ -111,9 +111,7 @@ export default defineComponent({
         const app = createApp(vueComp)
         app.mount(containerDom)
         return
-      }
-
-      if (tObject.bin) {
+      } else if (tObject.bin) {
         if (tObject.type === 'i') {
           iSrc.value = `data:image;base64,` + tObject.bin
         } else if (tObject.type === 'a') {
