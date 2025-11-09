@@ -1,18 +1,19 @@
+const vue = await import('vue')
+
 const x = {}
+globalThis.x = x
 
 //REDIS, ULID, VUE
 {
-  const [ { Redis }, { ulid }, Vue ] = await Promise.all([
+  const [ { Redis }, { ulid } ] = await Promise.all([
     import('https://esm.sh/@upstash/redis'),
     import('https://esm.sh/ulid?bundle'),
-    import('https://unpkg.com/vue@3/dist/vue.esm-browser.prod.js')
   ])
   x.redis = new Redis({
     url: 'https://holy-redfish-7937.upstash.io',
     token: localStorage.getItem('token') || 'Ah8BAAIgcDH8iJl1rQK-FZD7U3lrmcixchbsva9z2HQRDxtGlxLOrA',
   })
   x.ulid = ulid
-  x.vue = Vue
 }
 
 //FONTS
@@ -56,13 +57,13 @@ const x = {}
   x.kvRepo = new KvRepo
 }
 
-x.track = x.vue.ref('sys')
-x.sys = x.vue.ref({})
-x.user = x.vue.ref({})
+x.track = vue.ref('sys')
+x.sys = vue.ref({})
+x.user = vue.ref({})
 
-x.openedObjects = x.vue.ref([])
-x.showSideBar = x.vue.ref(true)
-x.showFileInput = x.vue.ref(false)
+x.openedObjects = vue.ref([])
+x.showSideBar = vue.ref(true)
+x.showFileInput = vue.ref(false)
 
 x.set = async (k, v) => await x.redis.hset(x.track.value, { [k]: v } )
 x.get = async (k) => await x.redis.redis.hget(x.track.value, k)
@@ -81,10 +82,10 @@ x.del = async (k) => await x.redis.redis.hdel(x.track.value, k)
     return o.objectId && x.sys.value[o.objectId]
   })
 
-  x.vue.watch(
+  vue.watch(
     x.openedObjects,
     (newOpenedObjects) => {
-      const arr = newOpenedObjects.map(proxyItem => x.vue.toRaw(proxyItem))
+      const arr = newOpenedObjects.map(proxyItem => vue.toRaw(proxyItem))
       x.kvRepo.set('openedObjects', JSON.stringify(arr))
     },
     { deep: true }
@@ -93,43 +94,21 @@ x.del = async (k) => await x.redis.redis.hdel(x.track.value, k)
 
 {
   const key = 'showSideBar'
-  
-  x.vue.watch(
-    x.showSideBar,
-    (flag) => flag ? x.kvRepo.on(key) : x.kvRepo.off(key),
-  )
+
+  // vue.watch(
+  //   x.showSideBar,
+  //   (flag) => flag ? x.kvRepo.on(key) : x.kvRepo.off(key),
+  // )
 }
 
 {
   const key = 'showFileInput'
   if (x.kvRepo.get(key)) x[key].value = true
 
-  x.vue.watch(
+  vue.watch(
     x[key],
     (flag) => flag ? x.kvRepo.on(key) : x.kvRepo.off(key),
   )
-}
-
-x.createFnFromCode = async (codeStr, name = '') => {
-  // const code = `export default async ($) => { 
-  //   ${codeStr} 
-  //   //# sourceURL=dynamic/${name}
-  // }`
-  // const blob = new Blob([code], { type: 'application/javascript' })
-  // return (await import(URL.createObjectURL(blob))).default
-}
-
-x.runCode = async (code, deps, name) => {
-  try {
-    const f = await x.createFnFromCode(code, name)
-    return await f({ 
-      ulid: x.ulid, Vue: x.vue, vue: x.vue, 
-      runByName: x.runByName, runById: x.runById, getById: x.getById, getByName: x.getByName,
-      ...deps
-    })
-  } catch (e) {
-    console.error(`runCode erro >> `, e, code)
-  }
 }
 
 x.getById = (id) => x.sys.value[id]
@@ -166,7 +145,7 @@ x.updateObject = (update) => {
   const object = objectRef.value[update.objectId]
   if (!object) return
 
-  const o = x.vue.toRaw(object)
+  const o = vue.toRaw(object)
   if (update.code) o.code = update.code
   if (update.data) o.data = update.data
   if (update.code || update.data) {
@@ -262,9 +241,8 @@ x.createCMDs = (assign = {}) => {
     },
     log: {
       f: async ([ name ]) => {
-        const { toRaw } = x.vue
         const o = x.getByName(name)
-        if (o) console.log(toRaw(o))
+        if (o) console.log(vue.toRaw(o))
       },
       desc: 'Function for logging object by name. Example: run functionName arg1 arg2 ...'
     },
@@ -290,7 +268,6 @@ x.createCMDs = (assign = {}) => {
 
   return CMDs
 }
-
 x.sysCMDs = x.createCMDs({ repoName: 'sys' })
 x.userCMDs = x.createCMDs({
   repoName: 'user',
@@ -321,306 +298,8 @@ x.readFileAsBase64 = async (file) => {
 
 //LOAD VUE
 {
-  const { createApp, ref, onMounted } = x.vue
-
-  const Frame = (await import('./frame.js')).default
-
-  const ObjectManager = {
-    name: 'ObjectManager',
-    props: ['repoName', 'objects', 'openObject'],
-    template: `
-      <div class="object-manager">
-        <div class="heading">System Objects</div>
-        <div 
-          v-for="(o, objectId) in objects" 
-          :key="objectId"
-          class="object"
-          @click="openObject(repoName, objectId)"
-        >
-          {{o.name}}
-        </div>
-      </div>
-    `
-  }
-
-  const MonacoEditor = {
-    name: 'MonacoEditor',
-    props: ['repoName', 'objectId', 'openedObjectId', 'code', 'position'],
-    setup(props) {
-      const codeContainer = ref(null)
-
-      onMounted(() => {
-        const editor = monaco.editor.create(codeContainer.value, {
-            value: props.code,
-            language: 'javascript',
-            theme: 'vs-dark',
-            automaticLayout: true,
-            fontFamily: "Jetbrains Mono",
-            fontSize: 15
-        })
-        editor.onDidChangeModelContent((e) => {  
-          x.updateObject({
-            repoName: props.repoName,
-            objectId: props.objectId,
-            openedObjectId: props.openedObjectId,
-
-            code: editor.getValue(),
-            position: editor.getPosition()
-          })
-        })
-        if (props.position) {
-          editor.revealPositionInCenter(props.position)
-        }
-
-        editor.layout()
-      })
-
-      return { codeContainer }
-    },
-    template: `
-    <div ref="codeContainer" style="margin: 0; height: ${window.innerHeight}px"></div>`
-  }
-
-  const OpenedObjectsComponent = {
-    name: 'openedObjects',
-    components: { MonacoEditor, Frame },
-
-    setup() {
-      const prepareObjects = () => {
-        const result = []
-        for (const object of x.openedObjects.value) {
-          result.push({ ...object, object: x.getById(object.objectId) })
-        }
-        return result
-      }
-
-      return { prepareObjects, height: window.innerHeight }
-    },
-
-    template: `
-      <div class="opened-objects" :style="{ height: height + 'px', overflow: 'auto' }">
-
-        <div v-for="o in prepareObjects()" :key="o.id">
-          <Frame v-if="o.opener === 'frame'" :openedObject="o"/>
-          <div v-else>
-            <div :id="o.id" class="object-name">{{o.object.name}}</div>
-            <MonacoEditor
-              :repoName="o.repoName"
-              :objectId="o.object.id"
-              :openedObjectId="o.id"
-              :code="o.object.code"
-              :position="o.position"
-            />
-          </div>
-          
-        </div>
-        
-      </div>
-    `
-  }
-
-  const MainComponent = {
-    name: 'Main',
-    components: { ObjectManager, OpenedObjectsComponent },
-    setup() {
-      const inputTextDom = ref(null)
-      const inputFileDom = ref(null)
-      const inputKey = 'sysInput'
-
-      const openObject = async (repoName, id) => {
-        const object = await x.getById(id)
-
-        const data = { repoName, id: x.ulid(), objectId: id }
-        if (object.bin) data.opener = 'frame'
-
-        x.openedObjects.value.push(data)
-      }
-      const closeObject = (openedObjectId) => {        
-        x.openedObjects.value = x.openedObjects.value.filter((object => {
-          return object.id !== openedObjectId
-        }))
-      }
-      const scrollToObject = (openedObjectId) => {        
-        const dom = document.getElementById(openedObjectId)
-        if (!dom) return
-        dom.scrollIntoView()
-      }
-
-      const onKeyDown = (e) => {
-        if (e.code === 'Enter') e.preventDefault()
-      }
-      const onKeyUp = async (e) => {
-        if (e.code !== 'Enter') return
-
-        const txt = inputTextDom.value.textContent 
-        
-        x.kvRepo.set(inputKey, txt)
-
-        const [ cmd, ...args ] = txt.split(' ')
-        const cmdList = x.sysCMDs
-
-        const file = inputFileDom.value ? inputFileDom.value.files[0] : null
-        args.bin = file ? await x.readFileAsBase64(file) : null
-        args.binMeta = file || null
-
-        if (!cmdList[cmd]) return  
-        const o = cmdList[cmd]
-        if (o.f) o.f(args)
-      }
-
-      const prepareObjects = (objects) => {
-        const result = []
-        for (const object of objects) {
-          result.push({ ...object, object: x.getById(object.objectId) })
-        }
-        return result
-      }
-
-      const toggleSideBar = () => x.showSideBar.value = !x.showSideBar.value
-      
-      onMounted(() => { 
-           x.vue.watch(
-            x.showSideBar,
-            async (flag) => {
-              if (!flag) return
-              
-              const inputCmd = x.kvRepo.get(inputKey) || 'Input cmd'
-              if (inputCmd && inputTextDom.value) inputTextDom.value.textContent = inputCmd
-            },
-            { immediate: true, flush: 'post' }
-          )
-      })
-
-      const style = document.createElement('style')
-      style.textContent = `
-        :root {
-          --std-margin: 12px;
-          --font: "JetBrains Mono", monospace;
-        }
-        body {
-          font-family: var(--font);
-          margin: 0;
-        }
-
-        #app {
-          
-        }
-        .app-container { 
-          display: flex;
-        }
-        .sidebar-switch {
-          cursor: pointer;
-          color: white;
-          background: white;
-        }
-        .left-sidebar {
-          font-size: 16px;
-          color: #333333;
-        }
-        .cmd-input {
-          padding: 0 var(--std-margin);
-          width: 180px;
-          background: #a7d0dd;
-          white-space: nowrap;
-          outline: none;
-        }
-        .file-input {
-          margin: var(--std-margin) 0 0 0
-        }
-        .object-name {
-          background: #e0e0e0;
-        }
-        
-        .object-manager {
-          padding: 0 var(--std-margin);
-        }
-        .object-manager .heading {
-          font-weight: bold;
-          margin: 10px 0;
-        }
-        .opened-objects-list {
-          color: #333333; 
-          font-family: var(--font);
-          font-size: 16px;
-          padding: 0 var(--std-margin);
-        }
-        .opened-objects-list .heading { 
-          font-weight: bold;
-          margin: 10px 0;
-          white-space: nowrap;
-        }
-
-        .opened-objects { 
-          flex: 1;
-        }
-
-        .frames-container {
-          position: absolute;
-        }
-        .frame {
-          position: absolute;
-          font-family: var(--font);
-          font-size: 16px;
-        }
-        .object { 
-          cursor: pointer;
-          white-space: nowrap;
-        }
-        input {
-          font-family: var(--font);
-          font-size: 16px
-        }
-      `
-      document.head.appendChild(style)
-
-      return {
-        sys: x.sys, user: x.user,
-        openObject, closeObject, scrollToObject,
-        openedObjects: x.openedObjects, prepareObjects, toggleSideBar,
-
-        inputTextDom, inputFileDom,
-        onKeyDown, onKeyUp,
-
-        showSideBar: x.showSideBar,
-        showFileInput: x.showFileInput,
-      }
-    },
-    template: `
-      <div class="app-container">
-        <div class="left-sidebar" v-if="showSideBar">
-          <div
-          class="cmd-input" 
-          ref="inputTextDom"
-          contenteditable="plaintext-only"
-          @keydown="onKeyDown($event)"
-          @keyup="onKeyUp($event)"
-          ></div>
-          <input class="file-input" v-if="showFileInput" ref="inputFileDom" type="file">
-
-          <div class="opened-objects-list">
-            <div class="heading">Opened Objects</div>
-
-            <div class="object"
-              v-for="o in prepareObjects(openedObjects)" 
-              :key="o.id"
-              @click="scrollToObject(o.id)"
-              @dblclick="closeObject(o.id)">
-                {{ o.object.name }}
-                <span v-if="o.opener"> ({{o.opener }})<span>
-            </div>
-          </div>
-
-          <ObjectManager 
-            repoName="sys"
-            :objects="sys"
-            :openObject="openObject" 
-          />
-        </div>
-
-        <OpenedObjectsComponent/>
-      </div> 
-    `
-  }
+  const { createApp } = vue
+  const { default: MainComponent } = await import('./main.vue')
   x.app = createApp(MainComponent)
 }
 
