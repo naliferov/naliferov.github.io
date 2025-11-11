@@ -43,7 +43,7 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
+import { ref, watch, onMounted } from 'vue'
 import ObjectManager from './objectList.vue'
 import OpenedObjectsComponent from './openedObjects.vue'
 
@@ -117,18 +117,20 @@ const toggleSideBar = () => {
   showSideBar.value = !showSideBar.value
 }
 
-watch(
-  showSideBar,
-  (flag) => {
-    if (!flag) return
+onMounted(() => {
+  watch(
+    showSideBar,
+    (flag) => {
+      if (!flag) return
 
-    const inputCmd = x.kvRepo.get(inputKey) || 'Input cmd'
-    if (inputCmd && inputTextDom.value) {
-      inputTextDom.value.textContent = inputCmd
-    }
-  },
-  { immediate: true, flush: 'post' },
-)
+      const inputCmd = x.kvRepo.get(inputKey) || 'Input cmd'
+      if (inputCmd && inputTextDom.value) {
+        inputTextDom.value.textContent = inputCmd
+      }
+    },
+    { immediate: true, flush: 'post' },
+  )
+})
 
 </script>
 
