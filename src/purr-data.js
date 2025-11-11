@@ -15,46 +15,6 @@ watch(
   { deep: true }
 )
 
-class DragAndDrop {
-  constructor() {
-    this.parentRect = null
-    this.targetDom = null
-    this.xShift = 0
-    this.yShift = 0
-    this.callback
-  }
-
-  activate(event, targetDom, callback) {
-    this.targetDom = targetDom
-    this.parentRect = targetDom.parentNode.getBoundingClientRect()
-    this.callback = callback
-
-    const rect = targetDom.getBoundingClientRect()
-    this.xShift = event.clientX - rect.left
-    this.yShift = event.clientY - rect.top
-
-    document.addEventListener('pointermove', this.onPointerMove)
-    document.addEventListener('pointerup', this.onPointerUp)
-  }
-
-  onPointerMove = (e) => {
-    if (!this.targetDom) return
-
-    if (e.clientX < this.parentRect.left) return
-    if (e.clientY < this.parentRect.top) return
-
-    this.targetDom.style.left  = e.clientX - this.xShift - this.parentRect.left + 'px'
-    this.targetDom.style.top  = e.clientY - this.yShift - this.parentRect.top + 'px'
-  }
-
-  onPointerUp = () => {
-    document.removeEventListener('pointermove', this.onPointerMove)
-    document.removeEventListener('pointerup', this.onPointerUp)
-    if (this.callback) this.callback()
-  }
-}
-const dnd = new DragAndDrop
-
 const DataNode = {
   props: ['name', 'id', 'output', 'valueName'],
   setup: (props) => {

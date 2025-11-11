@@ -10,6 +10,7 @@
 
 <script setup>
 import { ref, onMounted, createApp, computed } from 'vue'
+import DragAndDrop from './dragAndDrop.js'
 
 const x = globalThis.x
 
@@ -46,8 +47,8 @@ const topBar = ref(null)
 
 const iSrc = ref('')
 const aSrc = ref('')
-
 const objectName = computed(() => props.openedObject.object?.name ?? '')
+
 
 onMounted(async () => {
   const openedObject = props.openedObject
@@ -65,10 +66,13 @@ onMounted(async () => {
 
   topBar.value.addEventListener('pointerdown', (e) => {
     //dnd.activate(e, dom.value, openedObject)
+  })  //
+
+  Object.assign(topBar.value.style, {
+    background: '#e0e0e0',
+    color: 'black',
+    cursor: 'pointer'
   })
-  topBar.value.style.background = '#e0e0e0'
-  topBar.value.style.color = 'black'
-  topBar.value.style.cursor = 'pointer'
 
   const shadowRoot = appContainer.value.attachShadow({ mode: 'open' })
   const styleDom = document.createElement('style')
@@ -79,15 +83,11 @@ onMounted(async () => {
   const tObject = openedObject.object
   if (!tObject) return
 
-  // if (tObject.code) {
-  //   const vueComp = await x.runById(openedObject.objectId, {
-  //     openedObject,
-  //     updateObject: x.updateObject 
-  //   })
-  //   const app = createApp(vueComp)
-  //   app.mount(containerDom)
-  //   return
-  // }
+  if (tObject.runObjectName) {
+    //const app = createApp(vueComp)
+    //app.mount(containerDom)
+    return
+  }
 
   if (tObject.bin) {
     if (tObject.type === 'i') {

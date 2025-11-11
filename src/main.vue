@@ -18,7 +18,6 @@
 
       <div class="opened-objects-list">
         <div class="heading">Opened Objects</div>
-
         <div
           class="object"
           v-for="o in prepareObjects(openedObjects)"
@@ -100,7 +99,11 @@ const onKeyUp = async (e) => {
   args.bin = file ? await x.readFileAsBase64(file) : null
   args.binMeta = file || null
 
-  if (!cmdList[cmd]) return
+  if (!cmdList[cmd]) {
+    inputTextDom.value.textContent = 'Input cmd'
+    return
+  }
+
   const o = cmdList[cmd]
   if (o.f) o.f(args)
 }
