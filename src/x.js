@@ -66,8 +66,8 @@ x.showSideBar = vue.ref(true)
 x.showFileInput = vue.ref(false)
 
 x.set = async (k, v) => await x.redis.hset(x.track.value, { [k]: v } )
-x.get = async (k) => await x.redis.redis.hget(x.track.value, k)
-x.del = async (k) => await x.redis.redis.hdel(x.track.value, k)
+x.get = async (k) => await x.redis.hget(x.track.value, k)
+x.del = async (k) => await x.redis.hdel(x.track.value, k)
 
 {
   const arr = Object.values(await x.redis.hgetall(x.track.value))

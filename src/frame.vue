@@ -13,60 +13,24 @@ import { ref, onMounted, createApp, computed } from 'vue'
 
 const x = globalThis.x
 
-class DragAndDrop {
-  constructor() {
-    this.targetDom = null
-    this.targetOpenedObject = null
-    this.xShift = 0
-    this.yShift = 0
-
-    this.updateObject = null
-  }
-
-  setUpdateObject(fn) {
-    this.updateObject = fn
-  }
-
-  activate(event, targetDom, targetOpenedObject) {
-    this.targetDom = targetDom
-    this.targetOpenedObject = targetOpenedObject
-
-    const rect = this.targetDom.getBoundingClientRect()
-    this.xShift = event.clientX - rect.left
-    this.yShift = event.clientY - rect.top
-
-    document.addEventListener('pointermove', this.onPointerMove)
-    document.addEventListener('pointerup', this.onPointerUp)
-  }
-
-  onPointerMove = (e) => {
-    if (!this.targetDom) return
-    this.targetDom.style.left = (e.clientX - this.xShift) + 'px'
-    this.targetDom.style.top  = (e.clientY - this.yShift) + 'px'
-  }
-
-  onPointerUp = () => {
-    document.removeEventListener('pointermove', this.onPointerMove)
-    document.removeEventListener('pointerup', this.onPointerUp)
-
-    if (!this.targetDom) return
-
-    this.updateObject({ 
-      repoName: this.targetOpenedObject.repoName,
-      objectId: this.targetOpenedObject.object.id,
-      openedObjectId: this.targetOpenedObject.id,
-      frameParams: {
-        left: this.targetDom.style.left,
-        top: this.targetDom.style.top
-      }
-    })
-
-    this.targetDom = null
-    this.targetOpenedObject = null
-  }
-}
-
 const dnd = new DragAndDrop()
+
+//on move finished, update the object
+
+// this.updateObject({ 
+//       repoName: this.targetOpenedObject.repoName,
+//       objectId: this.targetOpenedObject.object.id,
+//       openedObjectId: this.targetOpenedObject.id,
+//       frameParams: {
+//         left: this.targetDom.style.left,
+//         top: this.targetDom.style.top
+//       }
+//     })
+
+// if (x.updateObject) {
+//     dnd.setUpdateObject(x.updateObject)
+//   }
+
 
 const props = defineProps({
   id: [String, Number],
@@ -88,10 +52,6 @@ const objectName = computed(() => props.openedObject.object?.name ?? '')
 onMounted(async () => {
   const openedObject = props.openedObject
 
-  if (x.updateObject) {
-    dnd.setUpdateObject(x.updateObject)
-  }
-
   const domStyle = dom.value.style
   domStyle.position = 'absolute'
   domStyle.zIndex = 10
@@ -104,7 +64,7 @@ onMounted(async () => {
   }
 
   topBar.value.addEventListener('pointerdown', (e) => {
-    dnd.activate(e, dom.value, openedObject)
+    //dnd.activate(e, dom.value, openedObject)
   })
   topBar.value.style.background = '#e0e0e0'
   topBar.value.style.color = 'black'
@@ -119,15 +79,15 @@ onMounted(async () => {
   const tObject = openedObject.object
   if (!tObject) return
 
-  if (tObject.code) {
-    const vueComp = await x.runById(openedObject.objectId, {
-      openedObject,
-      updateObject: x.updateObject 
-    })
-    const app = createApp(vueComp)
-    app.mount(containerDom)
-    return
-  }
+  // if (tObject.code) {
+  //   const vueComp = await x.runById(openedObject.objectId, {
+  //     openedObject,
+  //     updateObject: x.updateObject 
+  //   })
+  //   const app = createApp(vueComp)
+  //   app.mount(containerDom)
+  //   return
+  // }
 
   if (tObject.bin) {
     if (tObject.type === 'i') {
