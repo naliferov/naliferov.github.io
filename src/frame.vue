@@ -9,11 +9,10 @@
 </template>
 
 <script setup>
-import { ref, onMounted, createApp, computed } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import DragAndDrop from './dragAndDrop.js'
 
 const x = globalThis.x
-
 const dnd = new DragAndDrop()
 
 //on move finished, update the object
@@ -83,7 +82,7 @@ onMounted(async () => {
   const tObject = openedObject.object
   if (!tObject) return
 
-  if (tObject.runObjectName) {
+  if (tObject.isVueComponent) {
     //const app = createApp(vueComp)
     //app.mount(containerDom)
     return

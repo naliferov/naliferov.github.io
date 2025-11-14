@@ -30,7 +30,7 @@
         </div>
       </div>
 
-      <ObjectManager
+      <ObjectList
         repoName="sys"
         :objects="sys"
         :openObject="openObject"
@@ -43,7 +43,7 @@
 
 <script setup>
 import { ref, watch, onMounted } from 'vue'
-import ObjectManager from './objectList.vue'
+import ObjectList from './objectList.vue'
 import OpenedObjectsComponent from './openedObjects.vue'
 
 const x = globalThis.x
@@ -177,15 +177,6 @@ body {
 
 .object-name {
   background: #e0e0e0;
-}
-
-.object-manager {
-  padding: 0 var(--std-margin);
-}
-
-.object-manager .heading {
-  font-weight: bold;
-  margin: 10px 0;
 }
 
 .opened-objects-list {

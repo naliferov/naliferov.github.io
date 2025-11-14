@@ -1,3 +1,7 @@
+import MainComponent from './main.vue'
+import { ulid } from 'ulid'
+import { Redis } from "@upstash/redis"
+
 const vue = await import('vue')
 
 const x = {}
@@ -5,10 +9,6 @@ globalThis.x = x
 
 //REDIS, ULID, VUE
 {
-  const [ { Redis }, { ulid } ] = await Promise.all([
-    import('https://esm.sh/@upstash/redis'),
-    import('https://esm.sh/ulid?bundle'),
-  ])
   x.redis = new Redis({
     url: 'https://holy-redfish-7937.upstash.io',
     token: localStorage.getItem('token') || 'Ah8BAAIgcDH8iJl1rQK-FZD7U3lrmcixchbsva9z2HQRDxtGlxLOrA',
@@ -68,11 +68,15 @@ x.showFileInput = vue.ref(false)
 x.set = async (k, v) => await x.redis.hset(x.track.value, { [k]: v } )
 x.get = async (k) => await x.redis.hget(x.track.value, k)
 x.del = async (k) => await x.redis.hdel(x.track.value, k)
-
 {
   const arr = Object.values(await x.redis.hgetall(x.track.value))
   arr.sort((a, b) => (a.name > b.name) - (a.name < b.name));
   x.sys.value = Object.fromEntries(arr.map(o => [o.id, o]))
+
+  //integrate fs files to sys
+  
+  //const newObj = { id: x.ulid(), name: 'new' }
+  //x.sys.value[newObj.id] = newObj
 }
 
 {
@@ -299,7 +303,6 @@ x.readFileAsBase64 = async (file) => {
 //LOAD VUE
 {
   const { createApp } = vue
-  const { default: MainComponent } = await import('./main.vue')
   x.app = createApp(MainComponent)
 }
 
