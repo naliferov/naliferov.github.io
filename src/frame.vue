@@ -4,7 +4,7 @@
     <div class="app-container" ref="appContainer"></div>
 
     <img v-if="iSrc" :src="iSrc" style="display:block">
-    <audio v-if="aSrc" autoplay :src="aSrc" controls></audio>
+    <audio v-if="aSrc" :src="aSrc" autoplay controls></audio>
   </div>
 </template>
 
@@ -82,7 +82,8 @@ onMounted(async () => {
   const tObject = openedObject.object
   if (!tObject) return
 
-  if (tObject.isVueComponent) {
+  if (tObject.vueComponent) {
+    console.log(tObject.vueComponent)
     //const app = createApp(vueComp)
     //app.mount(containerDom)
     return

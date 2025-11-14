@@ -48,16 +48,19 @@ x.get = async (k) => await x.redis.hget(x.track.value, k)
 x.del = async (k) => await x.redis.hdel(x.track.value, k)
 {
   const arr = Object.values(await x.redis.hgetall(x.track.value))
+  
+  const addObject = (id, vueComponent) => {
+    const object = { id, name: id, vueComponent, saveable: false }
+    arr.push(object)
+  }
+  const { default: frame } = await import('./frame.vue')
+  addObject('frame', frame)
+  const { default: purrData } = await import('./purrData.vue')
+  addObject('purrData', purrData)
+
+
   arr.sort((a, b) => (a.name > b.name) - (a.name < b.name));
-  x.sys.value = Object.fromEntries(arr.map(o => [o.id, o]))
-
-  //integrate fs files to sys
-  //const newObj = { id: x.ulid(), name: 'new' }
-  //x.sys.value[newObj.id] = newObj
-}
-
-{
-  //integrate fs files to sys
+  x.sys.value = Object.fromEntries(arr.map(o => [o.id, o]))  
 }
 
 {
@@ -104,16 +107,6 @@ x.getByName = (name, repoName = 'sys') => {
     const o = objects[k]
     if (o.name === name) return o
   }
-}
-x.runById = async (id, deps = {}) => {
-  const o = x.getById(id)
-  if (o && o.code) {
-    return await x.runCode(o.code, deps, o.name)
-  }
-}
-x.runByName = async (name, deps = {}) => {
-  const o = x.getByName(name)
-  if (o && o.code) return await x.runCode(o.code, deps, o.name)
 }
 
 x.getOpenedObject = (objectId) => {
@@ -225,7 +218,7 @@ x.createCMDs = (assign = {}) => {
       desc: 'Function for open objects as app. Example: run objectName arg1 arg2 ...'
     },
     log: {
-      f: async ([ name ]) => {
+      async f([ name ]) {
         const o = x.getByName(name)
         if (o) console.log(vue.toRaw(o))
       },
