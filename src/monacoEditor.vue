@@ -4,6 +4,7 @@
 
 <script setup>
 import { onMounted, ref } from 'vue'
+import * as monaco from 'monaco-editor'
 
 const props = defineProps({
   repoName: String,

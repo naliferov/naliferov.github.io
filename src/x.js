@@ -1,8 +1,12 @@
 import MainComponent from './main.vue'
 import { ulid } from 'ulid'
-import { Redis } from "@upstash/redis"
-
-const vue = await import('vue')
+import { Redis } from '@upstash/redis'
+import EditorWorker from 'monaco-editor/esm/vs/editor/editor.worker?worker'
+import JsonWorker from 'monaco-editor/esm/vs/language/json/json.worker?worker'
+import TsWorker from 'monaco-editor/esm/vs/language/typescript/ts.worker?worker'
+import HtmlWorker from 'monaco-editor/esm/vs/language/html/html.worker?worker'
+import CssWorker from 'monaco-editor/esm/vs/language/css/css.worker?worker'
+import * as vue from 'vue'
 
 const x = {}
 globalThis.x = x
@@ -25,15 +29,23 @@ globalThis.x = x
 }
 //MONACO EDITOR
 {
-  const { promise: editorIsReady, resolve: editorIsReadyResolve } = Promise.withResolvers()
-  const requireScript = document.createElement('script');
-  requireScript.src = 'https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js'
-  requireScript.onload = () => {
-      require.config({ paths: { 'vs': 'https://cdn.jsdelivr.net/npm/monaco-editor@0.52.2/min/vs' } })
-      require(['vs/editor/editor.main'], editorIsReadyResolve)
+  self.MonacoEnvironment = {
+    getWorker(_moduleId, label) {
+      if (label === 'json') {
+        return new JsonWorker()
+      }
+      if (label === 'css' || label === 'scss' || label === 'less') {
+        return new CssWorker()
+      }
+      if (label === 'html' || label === 'handlebars' || label === 'razor') {
+        return new HtmlWorker()
+      }
+      if (label === 'typescript' || label === 'javascript') {
+        return new TsWorker()
+      }
+      return new EditorWorker()
+    },
   }
-  document.head.append(requireScript)
-  await editorIsReady
 }
 
 {
@@ -74,9 +86,12 @@ x.del = async (k) => await x.redis.hdel(x.track.value, k)
   x.sys.value = Object.fromEntries(arr.map(o => [o.id, o]))
 
   //integrate fs files to sys
-  
   //const newObj = { id: x.ulid(), name: 'new' }
   //x.sys.value[newObj.id] = newObj
+}
+
+{
+  //integrate fs files to sys
 }
 
 {
