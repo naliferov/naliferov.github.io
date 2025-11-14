@@ -1,11 +1,7 @@
 import MainComponent from './main.vue'
 import { ulid } from 'ulid'
 import { Redis } from '@upstash/redis'
-import EditorWorker from 'monaco-editor/esm/vs/editor/editor.worker?worker'
-import JsonWorker from 'monaco-editor/esm/vs/language/json/json.worker?worker'
-import TsWorker from 'monaco-editor/esm/vs/language/typescript/ts.worker?worker'
-import HtmlWorker from 'monaco-editor/esm/vs/language/html/html.worker?worker'
-import CssWorker from 'monaco-editor/esm/vs/language/css/css.worker?worker'
+
 import * as vue from 'vue'
 
 const x = {}
@@ -26,26 +22,6 @@ globalThis.x = x
   l.rel = 'stylesheet'
   l.href = 'https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap'
   document.head.append(l)
-}
-//MONACO EDITOR
-{
-  self.MonacoEnvironment = {
-    getWorker(_moduleId, label) {
-      if (label === 'json') {
-        return new JsonWorker()
-      }
-      if (label === 'css' || label === 'scss' || label === 'less') {
-        return new CssWorker()
-      }
-      if (label === 'html' || label === 'handlebars' || label === 'razor') {
-        return new HtmlWorker()
-      }
-      if (label === 'typescript' || label === 'javascript') {
-        return new TsWorker()
-      }
-      return new EditorWorker()
-    },
-  }
 }
 
 {
