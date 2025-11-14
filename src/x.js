@@ -1,27 +1,17 @@
 import MainComponent from './main.vue'
 import { ulid } from 'ulid'
 import { Redis } from '@upstash/redis'
-
 import * as vue from 'vue'
 
 const x = {}
 globalThis.x = x
 
-//REDIS, ULID, VUE
 {
   x.redis = new Redis({
     url: 'https://holy-redfish-7937.upstash.io',
     token: localStorage.getItem('token') || 'Ah8BAAIgcDH8iJl1rQK-FZD7U3lrmcixchbsva9z2HQRDxtGlxLOrA',
   })
   x.ulid = ulid
-}
-
-//FONTS
-{
-  const l = document.createElement('link')
-  l.rel = 'stylesheet'
-  l.href = 'https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap'
-  document.head.append(l)
 }
 
 {
