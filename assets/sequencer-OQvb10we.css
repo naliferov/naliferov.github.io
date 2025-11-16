@@ -1,0 +1,1 @@
+.sequencerContainer{display:flex;flex-direction:column;gap:2px}.sequencerRow{display:flex;gap:2px}.sequencerCell{width:16px;height:16px;background:gray}.sequencerCell.active{background:#101010}
