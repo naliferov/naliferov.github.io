@@ -52,7 +52,6 @@ onMounted(async () => {
   const openedObject = props.openedObject
 
   const domStyle = dom.value.style
-  Object.assign(domStyle, { position: 'absolute', zIndex: 10, top: 0 })
   if (openedObject.frameParams) {
     Object.assign(domStyle, openedObject.frameParams)
   }
@@ -85,11 +84,6 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.frame {
-  position: absolute;
-  z-index: 10;
-}
-
 .top-bar {
   background: #e0e0e0;
   color: black;

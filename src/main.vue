@@ -194,17 +194,9 @@ body {
 }
 
 .opened-objects {
+  display: flex;
+  gap: 10px;
   flex: 1;
-}
-
-.frames-container {
-  position: absolute;
-}
-
-.frame {
-  position: absolute;
-  font-family: var(--font);
-  font-size: 16px;
 }
 
 .object {
