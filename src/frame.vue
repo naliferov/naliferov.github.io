@@ -9,7 +9,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, createApp } from 'vue'
 import DragAndDrop from './dragAndDrop.js'
 
 const x = globalThis.x
@@ -41,51 +41,36 @@ const props = defineProps({
 })
 
 const dom = ref(null)
-const appContainer = ref(null)
 const topBar = ref(null)
+const appContainer = ref(null)
 
 const iSrc = ref('')
 const aSrc = ref('')
 const objectName = computed(() => props.openedObject.object?.name ?? '')
 
-
 onMounted(async () => {
   const openedObject = props.openedObject
 
   const domStyle = dom.value.style
-  domStyle.position = 'absolute'
-  domStyle.zIndex = 10
-  domStyle.top = 0
-
+  Object.assign(domStyle, { position: 'absolute', zIndex: 10, top: 0 })
   if (openedObject.frameParams) {
-    for (const key in openedObject.frameParams) {
-      domStyle[key] = openedObject.frameParams[key]
-    }
+    Object.assign(domStyle, openedObject.frameParams)
   }
 
   topBar.value.addEventListener('pointerdown', (e) => {
     //dnd.activate(e, dom.value, openedObject)
-  })  //
-
+  })
   Object.assign(topBar.value.style, {
     background: '#e0e0e0',
     color: 'black',
     cursor: 'pointer'
   })
 
-  const shadowRoot = appContainer.value.attachShadow({ mode: 'open' })
-  const styleDom = document.createElement('style')
-  shadowRoot.append(styleDom)
-  const containerDom = document.createElement('div')
-  shadowRoot.append(containerDom)
-
   const tObject = openedObject.object
   if (!tObject) return
-
   if (tObject.vueComponent) {
-    console.log(tObject.vueComponent)
-    //const app = createApp(vueComp)
-    //app.mount(containerDom)
+    const app = createApp(tObject.vueComponent)
+    app.mount(appContainer.value)
     return
   }
 

@@ -1,18 +1,11 @@
-import MainComponent from './main.vue'
 import { ulid } from 'ulid'
 import { Redis } from '@upstash/redis'
 import * as vue from 'vue'
+import MainComponent from './main.vue'
 
-const x = {}
+const x = { x: { x: { x: { } } } }
 globalThis.x = x
-
-{
-  x.redis = new Redis({
-    url: 'https://holy-redfish-7937.upstash.io',
-    token: localStorage.getItem('token') || 'Ah8BAAIgcDH8iJl1rQK-FZD7U3lrmcixchbsva9z2HQRDxtGlxLOrA',
-  })
-  x.ulid = ulid
-}
+x.ulid = ulid
 
 {
   class KvRepo {
@@ -35,29 +28,48 @@ globalThis.x = x
   x.kvRepo = new KvRepo
 }
 
-x.track = vue.ref('sys')
+
 x.sys = vue.ref({})
 x.user = vue.ref({})
-
 x.openedObjects = vue.ref([])
 x.showSideBar = vue.ref(true)
 x.showFileInput = vue.ref(false)
 
-x.set = async (k, v) => await x.redis.hset(x.track.value, { [k]: v } )
-x.get = async (k) => await x.redis.hget(x.track.value, k)
-x.del = async (k) => await x.redis.hdel(x.track.value, k)
+x.redis = new Redis({
+  url: 'https://holy-redfish-7937.upstash.io',
+  token: localStorage.getItem('token') || 'Ah8BAAIgcDH8iJl1rQK-FZD7U3lrmcixchbsva9z2HQRDxtGlxLOrA',
+})
+
+x.set = async (k, v) => await x.redis.hset('sys', { [k]: v } )
+x.get = async (k) => await x.redis.hget('sys', k)
+x.del = async (k) => await x.redis.hdel('sys', k)
+
+// x.sysRepo = {
+//   set: async (k, v) => await x.redis.hset('sys', { [k]: v } ),
+//   get: async (k) => await x.redis.hget('sys', k),
+//   del: async (k) => await x.redis.hdel('sys', k),
+// }
+// x.userRepo = {
+//   set: async (k, v) => await x.redis.hset('user', { [k]: v } ),
+//   get: async (k) => await x.redis.hget('user', k),
+//   del: async (k) => await x.redis.hdel('user', k),
+// }
+
 {
-  const arr = Object.values(await x.redis.hgetall(x.track.value))
-  
+  const arr = Object.values(await x.redis.hgetall('sys'))
+
   const addObject = (id, vueComponent) => {
     const object = { id, name: id, vueComponent, saveable: false }
     arr.push(object)
   }
   const { default: frame } = await import('./frame.vue')
   addObject('frame', frame)
+  const { default: grid } = await import('./grid.vue')
+  addObject('grid', grid)
   const { default: purrData } = await import('./purrData.vue')
   addObject('purrData', purrData)
-
+  const { default: sequencer } = await import('./sequencer.vue')
+  addObject('sequencer', sequencer)
 
   arr.sort((a, b) => (a.name > b.name) - (a.name < b.name));
   x.sys.value = Object.fromEntries(arr.map(o => [o.id, o]))  
@@ -163,6 +175,11 @@ x.createCMDs = (assign = {}) => {
     del: {
       f: async ([ name ]) => {
         const o = x.getByName(name)
+        if (!o.saveable) {
+          console.log(`object with name ${name} is not saveable`)
+          return
+        }
+        
         if (o) {
           delete x.sys.value[o.id]
           await x.del(o.id)
@@ -179,7 +196,12 @@ x.createCMDs = (assign = {}) => {
     mv: {
       f: async ([ oldName, newName ]) => {
         const o = x.getByName(oldName)
-        if (!o) return      
+        if (!o) return
+        if (!o.saveable) {
+          console.log(`object with name ${oldName} is not saveable`)
+          return
+        }
+
         o.name = newName
         await x.set(o.id, o)
       },

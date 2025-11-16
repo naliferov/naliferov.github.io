@@ -47,7 +47,6 @@ import ObjectList from './objectList.vue'
 import OpenedObjectsComponent from './openedObjects.vue'
 
 const x = globalThis.x
-
 const inputTextDom = ref(null)
 const inputFileDom = ref(null)
 
@@ -64,7 +63,9 @@ const openObject = async (repoName, id) => {
   const object = await x.getById(id)
 
   const data = { repoName, id: x.ulid(), objectId: id }
-  if (object.bin) data.opener = 'frame'
+  if (object.bin || object.vueComponent) {
+    data.opener = 'frame'
+  }
 
   openedObjects.value.push(data)
 }
