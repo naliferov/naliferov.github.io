@@ -1,6 +1,8 @@
 <template>
-  <div class="opened-objects" :style="{ height: height + 'px', overflow: 'auto' }">
-    <div v-for="o in preparedObjects" :key="o.id">
+  <div class="opened-objects" :style="{ height: height + 'px' }">
+    <div v-for="o in preparedObjects" :key="o.id"
+    :class="{ 'flex-1': o.opener !== 'frame' }"
+    >
       <Frame v-if="o.opener === 'frame'" :openedObject="o" />
       <div v-else>
         <div :id="o.id" class="object-name">{{ o.object.name }}</div>
@@ -36,6 +38,13 @@ const height = window.innerHeight
 
 <style scoped>
 .opened-objects {
+  display: flex;
+  gap: 10px;
+  flex: 1;
+  overflow: auto;
+}
+
+.flex-1 {
   flex: 1;
 }
 

@@ -193,12 +193,6 @@ body {
   white-space: nowrap;
 }
 
-.opened-objects {
-  display: flex;
-  gap: 10px;
-  flex: 1;
-}
-
 .object {
   cursor: pointer;
   white-space: nowrap;

@@ -6,12 +6,12 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
-import * as Tone from 'tone'
-Tone.start()
+// import { ref, onMounted } from 'vue'
+// import * as Tone from 'tone'
+// Tone.start()
 
 const x = globalThis.x
-const synth = new Tone.Synth().toDestination()
+//const synth = new Tone.Synth().toDestination()
 
 const dom = ref(null)
 const inputDom = ref(null)
@@ -89,7 +89,7 @@ onMounted(() => {
       
       row.append(cell)
       cell.addEventListener('click', (e) => {
-        synth.triggerAttackRelease(note, "16n")
+        //synth.triggerAttackRelease(note, "16n")
         cell.classList.toggle('sequencerCellActive')
       })
     }
