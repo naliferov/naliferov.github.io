@@ -1,37 +1,16 @@
 <template>
   <div class="opened-objects" :style="{ height: height + 'px' }">
-    <div v-for="o in preparedObjects" :key="o.id"
-    :class="{ 'flex-1': o.opener !== 'frame' }"
-    >
-      <Frame v-if="o.opener === 'frame'" :openedObject="o" />
-      <div v-else>
-        <div :id="o.id" class="object-name">{{ o.object.name }}</div>
-        <MonacoEditor
-          :repoName="o.repoName"
-          :objectId="o.object.id"
-          :openedObjectId="o.id"
-          :code="o.object.code"
-          :position="o.position"
-        />
-      </div>
+    <div v-for="o in objects" :key="o.id">
+      <Frame :openedObject="o" />
     </div>
   </div>
 </template>
 
 <script setup>
-import { computed } from 'vue'
-import MonacoEditor from './monacoEditor.vue'
 import Frame from './frame.vue'
 
 const x = globalThis.x
-
-const preparedObjects = computed(() =>
-  x.openedObjects.value.map(o => ({
-    ...o,
-    object: x.getById(o.objectId),
-  })),
-)
-
+const objects = x.openedObjects
 const height = window.innerHeight
 
 </script>

@@ -2,119 +2,141 @@
   <div ref="dom">
     <input ref="inputDom" @keyup="onInput" />
     <br/><br/>
+
+    <button class="play-button" @click="onPlayClick">Play</button>
+    <button class="play-button" @click="onStopClick">Stop</button>
+    <br/><br/>
+
+    <div class="clip">
+      <div v-for="(row, i) in grid" :key="i" class="row">
+        
+        <div v-for="(cell, y) in row"
+          :key="y"
+          class="cell" 
+          :class="{ 'active': cell }" 
+          @click="onCellClick(i, y)"
+        ></div>
+
+      </div>
+    </div>
+    
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
-import * as Tone from 'tone'
- Tone.start()
+import { ref, onMounted, toRaw } from 'vue'
 
 const x = globalThis.x
-const synth = new Tone.Synth().toDestination()
-
 const dom = ref(null)
 const inputDom = ref(null)
-let sequenceObject = null
 
+const clips = ref([])
+const grid = ref([])
 const notes = [
-  'C1', 'C#1', 'D1', 'D#1', 'E1', 'F1', 'F#1', 'G1',
-  'G#1', 'A1', 'A#1', 'B1', 'C2', 'C#2', 'D2', 'D#2'
+  'C2', 'C#2', 'D2', 'D#2', 'E2', 'F2', 'F#2', 'G2',
+  'G#2', 'A2', 'A#2', 'B2',
+  'C3', 'C#3', 'D3', 'D#3', 'E3', 'F3', 'F#3', 'G3',
+  'G#3', 'A3', 'A#3', 'B3'
 ]
+
+for (let i = 0; i < notes.length; i++) {
+  grid.value.push([])
+  for (let y = 0; y < 16; y++) {
+    grid.value[i].push(0)
+  }
+}
+
+let audio = null
+
+const getAudio = async () => {
+  if (!audio) {
+    const Tone = await import('tone')
+    audio = {
+      Tone,
+      synth: new Tone.Synth().toDestination(),
+      //monoSynth: new Tone.MonoSynth().toDestination(),
+      //duoSynth: new Tone.DuoSynth().toDestination(),
+    }
+    await Tone.start()
+  }
+
+  return audio
+}
 
 const onInput = (e) => {
   if (e.key !== 'Enter') return
   const obj = x.getByName(inputDom.value.value.trim())
   if (!obj) return
-  sequenceObject = obj
-  console.log(sequenceObject)
 }
+const onCellClick = async (rowNum, cellNum) => {
+  grid.value[rowNum][cellNum] = !grid.value[rowNum][cellNum]
 
-const createSequence = () => {
-  const sequence = []
+  const audio = await getAudio()
+  audio.synth.triggerAttackRelease(notes[rowNum], "16n")
 
-  const createRows = () => {
-    const rows = []
-    for (let i = 0; i < 16; i++) {
-      const row = []
-      for (let y = 0; y < 16; y++) {
-        row.push(false)
-      }
-      rows.push(row)
-    }
-    return rows
-  }
-
-  //create 16 clips
-  //for (let i = 0; i < 16; i++) {
-    sequence.push(createRows())
-  //  }
-
-  return sequence
-}
-
-console.log(createSequence())
-
-const updateSequence = (row, cell) => {
-  if (!sequenceObject) return
-
-  x.updateObject({
+  await x.updateObject({
     repoName: 'sys',
-    objectId: sequenceObject.id,
-    data: []
+    objectId: 'sequencerData',
+    data: toRaw(grid.value)
   })
 }
 
+let loop = null
 
-onMounted(() => {
-  const sequenceObjectName = x.kvRepo.get('sequenceObjectName')
-  if (sequenceObjectName) {
-    inputDom.value = sequenceObjectName    
-  }
+const onPlayClick = async () => {
+  const audio = await getAudio()
+  audio.Tone.Transport.bpm.value = 120
 
-  const container = document.createElement('div')
-  container.classList.add('sequencerContainer')
-  dom.value.append(container)
+  let step = 0
+  loop = new audio.Tone.Loop((time) => {
+      for (let i = 0; i < grid.value.length; i++) {
+        const isActive = grid.value[i][step]
+        if (!isActive) continue
+        audio.synth.triggerAttackRelease(notes[i], '16n', time)
+      }
+      step = (step + 1) % 16
+  }, '16n')
 
-  for (let i = 0; i < notes.length; i++) {
-    const note = notes[i]
-    
-    const row = document.createElement('div')
-    row.classList.add('sequencerRow')
-    container.append(row)
+  loop.start(0)
+  audio.Tone.Transport.start()
 
-    for (let y = 0; y < 16; y++) {
-      const cell = document.createElement('div')
-      cell.classList.add('sequencerCell')
-      
-      row.append(cell)
-      cell.addEventListener('click', (e) => {
-        synth.triggerAttackRelease(note, "16n")
-        cell.classList.toggle('sequencerCellActive')
-      })
-    }
-  }
+  //currentStep = (currentStep + 1) % totalSteps
 
+  //const audio = await getAudio()
+  //audio.synth.triggerAttackRelease(notes[rowNum], "16n")
+}
+
+const onStopClick = async () => {
+  const audio = await getAudio()
+  audio.Tone.Transport.stop()
+  loop.stop()
+}
+
+onMounted(async () => {
+  const sequencerData = await x.getObjectData('sequencerData')
+  if (sequencerData) grid.value = sequencerData
+
+  //synth.triggerAttackRelease(note, "16n")
 })
 </script>
 
 <style>
-.sequencerContainer {
+.clip {
   display: flex;
   flex-direction: column;
   gap: 2px;
 }
-.sequencerRow {
+.row {
   display: flex;
   gap: 2px;
 }
-.sequencerCell {
-  width: 16px;
-  height: 16px;  
+.cell {
+  width: 14px;
+  height: 14px;
   background: grey;
 }
-.sequencerCell.active {
-  background: rgb(16, 16, 16);
+.cell.active {
+  background: black;
 }
 
 </style>

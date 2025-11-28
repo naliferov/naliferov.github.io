@@ -20,10 +20,9 @@
         <div class="heading">Opened Objects</div>
         <div
           class="object"
-          v-for="o in prepareObjects(openedObjects)"
+          v-for="o in openedObjects"
           :key="o.id"
-          @click="scrollToObject(o.id)"
-          @dblclick="closeObject(o.id)"
+          @dblclick="x.closeObject(o.id)"
         >
           {{ o.object.name }}
           <span v-if="o.opener"> ({{ o.opener }})</span>
@@ -33,7 +32,6 @@
       <ObjectList
         repoName="sys"
         :objects="sys"
-        :openObject="openObject"
       />
     </div>
 
@@ -56,31 +54,7 @@ const user = x.user
 
 const openedObjects = x.openedObjects
 const showSideBar = x.showSideBar
-
 const showFileInput = x.showFileInput
-
-const openObject = async (repoName, id) => {
-  const object = await x.getById(id)
-
-  const data = { repoName, id: x.ulid(), objectId: id }
-  if (object.bin || object.vueComponent) {
-    data.opener = 'frame'
-  }
-
-  openedObjects.value.push(data)
-}
-
-const closeObject = (openedObjectId) => {
-  openedObjects.value = openedObjects.value.filter((object) => {
-    return object.id !== openedObjectId
-  })
-}
-
-const scrollToObject = (openedObjectId) => {
-  const dom = document.getElementById(openedObjectId)
-  if (!dom) return
-  dom.scrollIntoView()
-}
 
 const onKeyDown = (e) => {
   if (e.code === 'Enter') e.preventDefault()
@@ -107,18 +81,6 @@ const onKeyUp = async (e) => {
 
   const o = cmdList[cmd]
   if (o.f) o.f(args)
-}
-
-const prepareObjects = (objects) => {
-  const result = []
-  for (const object of objects) {
-    result.push({ ...object, object: x.getById(object.objectId) })
-  }
-  return result
-}
-
-const toggleSideBar = () => {
-  showSideBar.value = !showSideBar.value
 }
 
 onMounted(() => {

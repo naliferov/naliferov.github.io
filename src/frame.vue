@@ -11,6 +11,7 @@
 <script setup>
 import { ref, onMounted, computed, createApp } from 'vue'
 import DragAndDrop from './dragAndDrop.js'
+import MonacoEditor from './monacoEditor.vue'
 
 const x = globalThis.x
 const dnd = new DragAndDrop()
@@ -33,7 +34,6 @@ const dnd = new DragAndDrop()
 
 
 const props = defineProps({
-  id: [String, Number],
   openedObject: {
     type: Object,
     required: true
@@ -72,6 +72,14 @@ onMounted(async () => {
     app.mount(appContainer.value)
     return
   }
+
+  // <MonacoEditor
+  //         :repoName="o.repoName"
+  //         :objectId="o.object.id"
+  //         :openedObjectId="o.id"
+  //         :code="o.object.code"
+  //         :position="o.position"
+  //       />
 
   if (tObject.bin) {
     if (tObject.type === 'i') {

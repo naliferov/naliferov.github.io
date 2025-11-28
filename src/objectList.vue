@@ -5,7 +5,7 @@
       v-for="(o, objectId) in objects"
       :key="objectId"
       class="object"
-      @click="openObject(repoName, objectId)"
+      @click="x.openObject(repoName, objectId)"
     >
       {{ o.name }}
     </div>
@@ -16,8 +16,9 @@
 const props = defineProps({
   repoName: String,
   objects: Object,
-  openObject: Function,
 })
+
+const x = globalThis.x
 </script>
 
 <style scoped>
