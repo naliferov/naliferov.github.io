@@ -13,7 +13,7 @@
 
 <script setup>
 import { reactive, watch, ref, toRaw } from 'vue'
-import PurrDataNode from './purrDataNode.vue'
+import PurrDataNode from './PurrDataNode.vue'
 
 //props: STORE, OBJECT_ID
 

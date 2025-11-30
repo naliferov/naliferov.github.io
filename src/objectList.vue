@@ -5,7 +5,7 @@
       v-for="(o, objectId) in objects"
       :key="objectId"
       class="object"
-      @click="x.openObject(repoName, objectId)"
+      @click="openedObjectsStore.add(repoName, objectId)"
     >
       {{ o.name }}
     </div>
@@ -13,12 +13,15 @@
 </template>
 
 <script setup>
+import { useOpenedObjectsStore } from './stores/openedObjects'
+
 const props = defineProps({
   repoName: String,
   objects: Object,
 })
 
-const x = globalThis.x
+const openedObjectsStore = useOpenedObjectsStore()
+
 </script>
 
 <style scoped>

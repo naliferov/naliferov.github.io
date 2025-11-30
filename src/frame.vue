@@ -11,7 +11,7 @@
 <script setup>
 import { ref, onMounted, computed, createApp } from 'vue'
 import DragAndDrop from './dragAndDrop.js'
-import MonacoEditor from './monacoEditor.vue'
+import MonacoEditor from './codeEditor.vue'
 
 const x = globalThis.x
 const dnd = new DragAndDrop()

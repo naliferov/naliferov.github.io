@@ -1,3 +1,10 @@
+const x = {  
+  x(k, obj) {
+    this[k] = Object.create(this)
+    Object.assign(this[k], obj)
+  }
+}
+
 x.readFileAsBase64 = async (file) => {
   const { promise, resolve, reject } = Promise.withResolvers()
 

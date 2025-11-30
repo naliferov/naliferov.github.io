@@ -1,16 +1,17 @@
 <template>
-  <div class="opened-objects" :style="{ height: height + 'px' }">
-    <div v-for="o in objects" :key="o.id">
-      <Frame :openedObject="o" />
+  <div class="opened-objects">
+    <div v-for="o in openedObjectsStore.openedObjects" :key="o.id">
+      object:{{ o.id }}
+      <!-- <Frame :openedObject="o" /> -->
     </div>
   </div>
 </template>
 
 <script setup>
-import Frame from './frame.vue'
+import Frame from './Frame.vue'
+import { useOpenedObjectsStore } from './stores/openedObjects'
 
-const x = globalThis.x
-const objects = x.openedObjects
+const openedObjectsStore = useOpenedObjectsStore()
 const height = window.innerHeight
 
 </script>

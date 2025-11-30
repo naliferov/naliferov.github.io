@@ -1,6 +1,6 @@
 <template>
   <div class="app-container">
-    <div class="left-sidebar" v-if="showSideBar">
+    <div class="left-sidebar">
       <div
         class="cmd-input"
         ref="inputTextDom"
@@ -20,9 +20,9 @@
         <div class="heading">Opened Objects</div>
         <div
           class="object"
-          v-for="o in openedObjects"
+          v-for="o in openedObjectsStore.openedObjects"
           :key="o.id"
-          @dblclick="x.closeObject(o.id)"
+          @dblclick="openedObjectsStore.remove(o.id)"
         >
           {{ o.object.name }}
           <span v-if="o.opener"> ({{ o.opener }})</span>
@@ -31,7 +31,7 @@
 
       <ObjectList
         repoName="sys"
-        :objects="sys"
+        :objects="objectsStore.objects"
       />
     </div>
 
@@ -40,21 +40,21 @@
 </template>
 
 <script setup>
-import { ref, watch, onMounted } from 'vue'
-import ObjectList from './objectList.vue'
-import OpenedObjectsComponent from './openedObjects.vue'
+import { ref, onMounted, computed } from 'vue'
+import ObjectList from './ObjectList.vue'
+import OpenedObjectsComponent from './OpenedObjects.vue'
+import { useObjectsStore } from './stores/objects'
+import { useOpenedObjectsStore } from './stores/openedObjects'
 
-const x = globalThis.x
+const objectsStore = useObjectsStore()
+objectsStore.fetchObjects()
+
+const openedObjectsStore = useOpenedObjectsStore()
+
+
 const inputTextDom = ref(null)
 const inputFileDom = ref(null)
-
 const inputKey = 'sysInput'
-const sys = x.sys
-const user = x.user
-
-const openedObjects = x.openedObjects
-const showSideBar = x.showSideBar
-const showFileInput = x.showFileInput
 
 const onKeyDown = (e) => {
   if (e.code === 'Enter') e.preventDefault()
@@ -84,18 +84,15 @@ const onKeyUp = async (e) => {
 }
 
 onMounted(() => {
-  watch(
-    showSideBar,
-    (flag) => {
-      if (!flag) return
+  //if (!flag) return
+  //     const inputCmd = x.kvRepo.get(inputKey) || 'Input cmd'
+  //     if (inputCmd && inputTextDom.value) {
+  //       inputTextDom.value.textContent = inputCmd
+  //     }
 
-      const inputCmd = x.kvRepo.get(inputKey) || 'Input cmd'
-      if (inputCmd && inputTextDom.value) {
-        inputTextDom.value.textContent = inputCmd
-      }
-    },
-    { immediate: true, flush: 'post' },
-  )
+  // setInterval(() => {
+  //   console.log(objects)
+  // }, 1000)
 })
 
 </script>
@@ -113,12 +110,6 @@ body {
 
 .app-container {
   display: flex;
-}
-
-.sidebar-switch {
-  cursor: pointer;
-  color: white;
-  background: white;
 }
 
 .left-sidebar {
