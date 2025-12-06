@@ -1,4 +1,4 @@
-class KvRepo {
+class LocalStore {
   get(key) {
     return localStorage.getItem(key)
   }
@@ -16,4 +16,6 @@ class KvRepo {
   }
 }
 
-export default KvRepo
+const localStore = new LocalStore()
+
+export { localStore }

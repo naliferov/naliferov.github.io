@@ -7,6 +7,4 @@ export type ObjectDescriptor = {
   bin?: string            // base64, buffer
   component?: any
   componentType: 'vue' | 'react' | 'svelte' | 'custom'
-  notSaveable?: boolean
-  meta?: Record<string, any>
 }

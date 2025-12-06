@@ -81,12 +81,14 @@ onMounted(async () => {
   //         :position="o.position"
   //       />
 
-  if (tObject.bin) {
-    if (tObject.type === 'i') {
-      iSrc.value = `data:image;base64,` + tObject.bin
-    } else if (tObject.type === 'a') {
-      aSrc.value = `data:audio/ogg;base64,` + tObject.bin
-    }
+  if (!tObject.bin) {
+    return
+  }
+  
+  if (tObject.type === 'i') {
+    iSrc.value = `data:image;base64,` + tObject.bin
+  } else if (tObject.type === 'a') {
+    aSrc.value = `data:audio/ogg;base64,` + tObject.bin
   }
 })
 </script>

@@ -1,34 +1,14 @@
-export function useCommands(cmds = x.sysCMDs) {
-  const run = async (name, args = []) => {
-    const cmd = cmds[name]
-    if (!cmd || !cmd.f) {
-      console.warn(`Unknown command: ${name}`)
-      return
-    }
-    return await cmd.f(args)
-  }
-
-  const list = () =>
-    Object.entries(cmds)
-      .filter(([_, v]) => typeof v.f === 'function')
-      .map(([name, v]) => ({ name, desc: v.desc }))
-
-  return {
-    cmds,
-    run,
-    list,
-  }
+const ctx = {
+  //dataSource: 'sys',
+  //track: 'someTrack',
 }
 
-x.x('CMDs', {})
-
-Object.assign(x.CMDs, {
-  repoName: 'someRepoName',
+const cmds = {
   add: {
-    f: async (args) => {
-      const [ name ] = args
+    f: async (dataSource, args) => {
+      const name = args[0]
 
-      const obj = x.getByName(name)
+      const obj = dataSource.getByName(name)
       if (obj) {
         console.log(`object with name ${name} already exists`)
         return
@@ -141,25 +121,45 @@ Object.assign(x.CMDs, {
     },
     desc: 'Export dump'
   },
-})
-
-x.createCMDs = (assign = {}) => {
-  const obj = Object.create(x.CMDs)
-  Object.assign(obj, assign)
-
-  return obj
 }
-x.sysCMDs = x.createCMDs({ repoName: 'sys' })
-x.userCMDs = x.createCMDs({
-  repoName: 'user',
-  async 'import-dump'() {
-    // const fInput = 
-    // fInput.type = 'file'
-    // fInput.addEventListener('change', async (e) => {
-    //   const dump = JSON.parse(await readFileFromInput(e.target.files[0]))
-    //   importDump(dbUser, dump)
-    // })
-    // userCmdInput.before(fInput)
-  },
-  //async 'export-dump'() { exportDump(dbUser, ['objects', 'kv'], 'user.json') },
-})
+
+const run = async (name, args = []) => {
+  const cmd = cmds[name]
+  if (!cmd || !cmd.f) {
+    console.warn(`Unknown command: ${name}`)
+    return
+  }
+  return await cmd.f(args)
+}
+
+const list = () =>
+  Object.entries(cmds)
+    .filter(([_, v]) => typeof v.f === 'function')
+    .map(([name, v]) => ({ name, desc: v.desc }))
+
+return {
+  cmds,
+  run,
+  list,
+}
+
+// x.createCMDs = (assign = {}) => {
+//   const obj = Object.create(x.CMDs)
+//   Object.assign(obj, assign)
+
+//   return obj
+// }
+// x.sysCMDs = x.createCMDs({ repoName: 'sys' })
+// x.userCMDs = x.createCMDs({
+//   repoName: 'user',
+//   async 'import-dump'() {
+//     // const fInput = 
+//     // fInput.type = 'file'
+//     // fInput.addEventListener('change', async (e) => {
+//     //   const dump = JSON.parse(await readFileFromInput(e.target.files[0]))
+//     //   importDump(dbUser, dump)
+//     // })
+//     // userCmdInput.before(fInput)
+//   },
+//   //async 'export-dump'() { exportDump(dbUser, ['objects', 'kv'], 'user.json') },
+// })

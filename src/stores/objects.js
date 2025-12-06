@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import { Redis } from '@upstash/redis'
+//import { Redis } from '@upstash/redis'
 
 //todo integrate conception of tracks of objects
 
@@ -80,17 +80,23 @@ import { Redis } from '@upstash/redis'
 // }
 
 
-//dataSource
-
-const redis = new Redis({
-  url: 'https://holy-redfish-7937.upstash.io',
-  token: localStorage.getItem('token') || 'Ah8BAAIgcDH8iJl1rQK-FZD7U3lrmcixchbsva9z2HQRDxtGlxLOrA',
-})
-
 export const useObjectsStore = defineStore('objects', () => {
 
-  //const track = ref('')
+  const dataSourceName = ref('system')
+  const trackName = ref('default')
   const objects = ref({})
+
+  const setDataSourceName = (dataSourceName) => {
+    dataSourceName.value = dataSourceName
+  }
+
+  const setTrackName = (trackName) => {
+    trackName.value = trackName
+  }
+
+  const fetchObjects = async () => {
+    //setObjects(await redis.hgetall('sys'))
+  }
 
   const getById = (id) => objects.value[id]
 
@@ -111,21 +117,24 @@ export const useObjectsStore = defineStore('objects', () => {
     objects.value[idx] = { ...objects.value[idx], ...patch }
   }
 
-  const fetchObjects = async () => setObjects(await redis.hgetall('sys'))
-
   return {
     objects,
+    dataSourceName,
+    trackName,
+    
     getById,
     setObjects,
     addObject,
     updateObject,
     fetchObjects,
+
+    setDataSourceName,
+    setTrackName,
   }
 })
 
 
-      
-
+    
       //const arr = Object.values(await x.sysRedis.hgetall('sys'))
 
       // const addObject = (id, vueComponent) => {

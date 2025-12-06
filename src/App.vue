@@ -1,5 +1,6 @@
 <template>
   <div class="app-container">
+    
     <div class="left-sidebar">
       <div
         class="cmd-input"
@@ -9,12 +10,16 @@
         @keyup="onKeyUp"
       ></div>
 
-      <input
+      <div class="container">
+        <input
         class="file-input"
         v-if="showFileInput"
         ref="inputFileDom"
         type="file"
       />
+
+      <div><b>Data source:</b> {{ objectsStore.dataSourceName }}</div>
+      <div><b>Track:</b> {{ objectsStore.trackName }}</div>
 
       <div class="opened-objects-list">
         <div class="heading">Opened Objects</div>
@@ -25,7 +30,6 @@
           @dblclick="openedObjectsStore.remove(o.id)"
         >
           {{ o.object.name }}
-          <span v-if="o.opener"> ({{ o.opener }})</span>
         </div>
       </div>
 
@@ -35,26 +39,33 @@
       />
     </div>
 
-    <OpenedObjectsComponent />
+    </div>
+
+    <div class="opened-objects">
+        <div v-for="o in openedObjectsStore.openedObjects" :key="o.id">
+          <Frame :openedObject="o" />
+        </div>
+      </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted } from 'vue'
 import ObjectList from './ObjectList.vue'
-import OpenedObjectsComponent from './OpenedObjects.vue'
+import Frame from './Frame.vue'
 import { useObjectsStore } from './stores/objects'
 import { useOpenedObjectsStore } from './stores/openedObjects'
 
 const objectsStore = useObjectsStore()
-objectsStore.fetchObjects()
-
 const openedObjectsStore = useOpenedObjectsStore()
 
+objectsStore.fetchObjects().then(() => {
+  openedObjectsStore.fetchObjects()
+})
 
+const showFileInput = ref(false)
 const inputTextDom = ref(null)
 const inputFileDom = ref(null)
-const inputKey = 'sysInput'
 
 const onKeyDown = (e) => {
   if (e.code === 'Enter') e.preventDefault()
@@ -64,8 +75,6 @@ const onKeyUp = async (e) => {
   if (e.code !== 'Enter') return
 
   const txt = inputTextDom.value?.textContent ?? ''
-
-  x.kvRepo.set(inputKey, txt)
 
   const [cmd, ...args] = txt.split(' ')
   const cmdList = x.sysCMDs
@@ -84,15 +93,8 @@ const onKeyUp = async (e) => {
 }
 
 onMounted(() => {
-  //if (!flag) return
-  //     const inputCmd = x.kvRepo.get(inputKey) || 'Input cmd'
-  //     if (inputCmd && inputTextDom.value) {
-  //       inputTextDom.value.textContent = inputCmd
-  //     }
-
-  // setInterval(() => {
-  //   console.log(objects)
-  // }, 1000)
+  const inputCmd = 'Input cmd'
+  inputTextDom.value.textContent = inputCmd
 })
 
 </script>
@@ -110,6 +112,11 @@ body {
 
 .app-container {
   display: flex;
+}
+
+.container {
+  margin-top: var(--std-margin);
+  padding: 0 var(--std-margin);
 }
 
 .left-sidebar {
@@ -137,7 +144,6 @@ body {
   color: #333333;
   font-family: var(--font);
   font-size: 16px;
-  padding: 0 var(--std-margin);
 }
 
 .opened-objects-list .heading {
@@ -154,5 +160,22 @@ body {
 input {
   font-family: var(--font);
   font-size: 16px;
+}
+
+.opened-objects {
+  display: flex;
+  gap: 10px;
+  flex: 1;
+  overflow: auto;
+}
+
+.flex-1 {
+  flex: 1;
+}
+
+.object-name {
+  background: #e0e0e0;
+  font-weight: 500;
+  white-space: nowrap;
 }
 </style>
