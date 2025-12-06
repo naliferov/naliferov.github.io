@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-//import { Redis } from '@upstash/redis'
+import { systemDataSource } from '../dataSource/systemDataSource.js'
+import { redisDataSource } from '../dataSource/redisDataSource.js'
 
 //todo integrate conception of tracks of objects
 
@@ -86,6 +87,10 @@ export const useObjectsStore = defineStore('objects', () => {
   const trackName = ref('default')
   const objects = ref({})
 
+  if (dataSourceName.value === 'system') {
+    //dataSource
+  }
+
   const setDataSourceName = (dataSourceName) => {
     dataSourceName.value = dataSourceName
   }
@@ -121,7 +126,7 @@ export const useObjectsStore = defineStore('objects', () => {
     objects,
     dataSourceName,
     trackName,
-    
+
     getById,
     setObjects,
     addObject,
