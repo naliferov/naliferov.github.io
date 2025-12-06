@@ -27,11 +27,11 @@ const configs = {
 
 export const factoryDataSource = {
 
-  getDataSourceById: (dataSourceId) => {
-    const config = configs[dataSourceId]
+  getDataSourceById: (id) => {
+    const config = configs[id]
     if (!config) return null
 
-    if (dataSourceId === 'local') return localDataSource    
+    if (id === 'local') return localDataSource    
 
     //if (config.type === 'redisDataSource') return redisDataSource
   },

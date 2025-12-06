@@ -58,6 +58,8 @@ import { useOpenedObjectsStore } from './stores/openedObjects'
 import { runCmd } from './useCommands.js'
 import { factoryDataSource } from './dataSource/factoryDataSource.js'
 
+const localeDataSource = factoryDataSource.getDataSourceById('local')
+
 const objectsStore = useObjectsStore()
 const openedObjectsStore = useOpenedObjectsStore()
 
@@ -69,6 +71,7 @@ const showFileInput = ref(false)
 const inputTextDom = ref(null)
 const inputFileDom = ref(null)
 
+
 const onKeyDown = (e) => {
   if (e.code === 'Enter') e.preventDefault()
 }
@@ -76,24 +79,25 @@ const onKeyDown = (e) => {
 const onKeyUp = async (e) => {
   if (e.code !== 'Enter') return
 
-  const txt = inputTextDom.value?.textContent ?? ''
-  const [cmd, ...args] = txt.split(' ')
+  const cmdTxt = inputTextDom.value?.textContent ?? ''
+  const [cmd, ...args] = cmdTxt.split(' ')
 
   //const file = inputFileDom.value ? inputFileDom.value.files[0] : null
   //args.bin = file ? await x.readFileAsBase64(file) : null
   //args.binMeta = file || null
 
-  //if (!cmdList[cmd]) {
-  //  inputTextDom.value.textContent = 'Input cmd'
-  //  return
-  //}
+  const result = await runCmd(cmd, args)
+  // if (!result) {
+  //   inputTextDom.value.textContent = 'Input cmd'
+  //   return
+  // }
 
-  await runCmd(cmd, args)
+  localeDataSource.set('cmdInput', cmdTxt)
 }
 
 onMounted(() => {
-  const inputCmd = 'Input cmd'
-  inputTextDom.value.textContent = inputCmd
+  const txt = localeDataSource.get('cmdInput') || 'Input cmd'
+  inputTextDom.value.textContent = txt
 })
 
 </script>

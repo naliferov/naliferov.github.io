@@ -138,31 +138,19 @@ export const runCmd = async (name, args = []) => {
   }
   if (!objectsStore) objectsStore = useObjectsStore()
 
-  return await cmd.f(args)
+  await cmd.f(args)
+  return true
 }
 
 export const list = () =>
   Object.entries(cmds)
     .filter(([_, v]) => typeof v.f === 'function')
-    .map(([name, v]) => ({ name, desc: v.desc }));
+    .map(([name, v]) => ({ name, desc: v.desc }))
 
-// x.createCMDs = (assign = {}) => {
-//   const obj = Object.create(x.CMDs)
-//   Object.assign(obj, assign)
-
-//   return obj
-// }
-// x.sysCMDs = x.createCMDs({ repoName: 'sys' })
-// x.userCMDs = x.createCMDs({
-//   repoName: 'user',
-//   async 'import-dump'() {
-//     // const fInput = 
+// const fInput = 
 //     // fInput.type = 'file'
 //     // fInput.addEventListener('change', async (e) => {
 //     //   const dump = JSON.parse(await readFileFromInput(e.target.files[0]))
 //     //   importDump(dbUser, dump)
 //     // })
 //     // userCmdInput.before(fInput)
-//   },
-//   //async 'export-dump'() { exportDump(dbUser, ['objects', 'kv'], 'user.json') },
-// })
