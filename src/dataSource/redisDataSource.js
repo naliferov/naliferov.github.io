@@ -5,9 +5,7 @@ const redis = new Redis({
   token: localStorage.getItem('token') || 'Ah8BAAIgcDH8iJl1rQK-FZD7U3lrmcixchbsva9z2HQRDxtGlxLOrA',
 })
 
-const data = {
-  id: 'redis',
-  name: 'Redis',
+export const redisDataSource = {
   list: async (track) => {
     return await redis.hgetall(track)
   },
@@ -21,5 +19,3 @@ const data = {
     await redis.hdel(track, id)
   }
 }
-
-export default data

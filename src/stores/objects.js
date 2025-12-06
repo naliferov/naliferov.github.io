@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import { systemDataSource } from '../dataSource/systemDataSource.js'
-import { redisDataSource } from '../dataSource/redisDataSource.js'
+
+import { factoryDataSource } from '../dataSource/factoryDataSource.js'
 
 //todo integrate conception of tracks of objects
 
@@ -80,27 +80,36 @@ import { redisDataSource } from '../dataSource/redisDataSource.js'
 //   }
 // }
 
-
 export const useObjectsStore = defineStore('objects', () => {
 
-  const dataSourceName = ref('system')
-  const trackName = ref('default')
+  const dataSource = ref(factoryDataSource)
+  const dataSourceName = ref('factoryDataSource')
+
+  const track = ref('sys')
   const objects = ref({})
 
-  if (dataSourceName.value === 'system') {
-    //dataSource
+  if (dataSourceName.value !== 'factoryDataSource') {
+    const newDataSource = factoryDataSource.getDataSourceById(dataSourceName.value)
+    if (newDataSource) {
+      dataSource.value = newDataSource
+    }
   }
 
   const setDataSourceName = (dataSourceName) => {
     dataSourceName.value = dataSourceName
+
+    console.log('setDataSourceName', dataSourceName.value)
+
+    fetchObjects()
   }
 
-  const setTrackName = (trackName) => {
-    trackName.value = trackName
+  const setTrack = (track) => {
+    track.value = track
   }
 
   const fetchObjects = async () => {
-    //setObjects(await redis.hgetall('sys'))
+    const list = await dataSource.value.list(track.value)
+    setObjects(list)
   }
 
   const getById = (id) => objects.value[id]
@@ -125,7 +134,7 @@ export const useObjectsStore = defineStore('objects', () => {
   return {
     objects,
     dataSourceName,
-    trackName,
+    track,
 
     getById,
     setObjects,
@@ -134,7 +143,7 @@ export const useObjectsStore = defineStore('objects', () => {
     fetchObjects,
 
     setDataSourceName,
-    setTrackName,
+    setTrack,
   }
 })
 

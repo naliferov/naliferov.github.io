@@ -19,9 +19,9 @@
       />
 
       <div><b>Data source:</b> {{ objectsStore.dataSourceName }}</div>
-      <div><b>Track:</b> {{ objectsStore.trackName }}</div>
+      <div><b>Track:</b> {{ objectsStore.track }}</div>
 
-      <div class="opened-objects-list">
+      <!-- <div class="opened-objects-list">
         <div class="heading">Opened Objects</div>
         <div
           class="object"
@@ -31,7 +31,7 @@
         >
           {{ o.object.name }}
         </div>
-      </div>
+      </div> -->
 
       <ObjectList
         repoName="sys"
@@ -55,6 +55,8 @@ import ObjectList from './ObjectList.vue'
 import Frame from './Frame.vue'
 import { useObjectsStore } from './stores/objects'
 import { useOpenedObjectsStore } from './stores/openedObjects'
+import { runCmd } from './useCommands.js'
+import { factoryDataSource } from './dataSource/factoryDataSource.js'
 
 const objectsStore = useObjectsStore()
 const openedObjectsStore = useOpenedObjectsStore()
@@ -75,21 +77,18 @@ const onKeyUp = async (e) => {
   if (e.code !== 'Enter') return
 
   const txt = inputTextDom.value?.textContent ?? ''
-
   const [cmd, ...args] = txt.split(' ')
-  const cmdList = x.sysCMDs
 
-  const file = inputFileDom.value ? inputFileDom.value.files[0] : null
-  args.bin = file ? await x.readFileAsBase64(file) : null
-  args.binMeta = file || null
+  //const file = inputFileDom.value ? inputFileDom.value.files[0] : null
+  //args.bin = file ? await x.readFileAsBase64(file) : null
+  //args.binMeta = file || null
 
-  if (!cmdList[cmd]) {
-    inputTextDom.value.textContent = 'Input cmd'
-    return
-  }
+  //if (!cmdList[cmd]) {
+  //  inputTextDom.value.textContent = 'Input cmd'
+  //  return
+  //}
 
-  const o = cmdList[cmd]
-  if (o.f) o.f(args)
+  await runCmd(cmd, args)
 }
 
 onMounted(() => {

@@ -2,10 +2,10 @@ import { defineStore } from 'pinia'
 import { ulid } from 'ulid'
 import * as vue from 'vue'
 import { useObjectsStore } from './objects'
-import { localStore } from '../dataSource/localStoreDataSource.js'
+import { localDataSource } from '../dataSource/localDataSource.js'
 
 const STORAGE_KEY = 'openedObjects'
-
+  
 export const useOpenedObjectsStore = defineStore('openedObjects', () => {
   
   const objectsStore = useObjectsStore()
@@ -13,7 +13,7 @@ export const useOpenedObjectsStore = defineStore('openedObjects', () => {
 
   const fetchObjects = () => {
 
-    const list = JSON.parse(localStore.get(STORAGE_KEY) ?? '[]')
+    const list = JSON.parse(localDataSource.get(STORAGE_KEY) ?? '[]')
 
     for (let i = 0; i < list.length; i++) {
       add(list[i].repoName, list[i].objectId)
@@ -25,7 +25,7 @@ export const useOpenedObjectsStore = defineStore('openedObjects', () => {
   const startWatch = () => {
     vue.watch(
       openedObjects,
-      (newOpenedObjects) => save(newOpenedObjects, localStore),
+      (newOpenedObjects) => save(newOpenedObjects, localDataSource),
       { deep: true }
     )
   }
@@ -50,13 +50,13 @@ export const useOpenedObjectsStore = defineStore('openedObjects', () => {
     })
   }
 
-  const save = (objects, localStore) => {
+  const save = (objects, localDataSource) => {
     const arr = objects.map(item => {
       const o = JSON.parse(JSON.stringify(item))
       delete o.object
       return o
     })
-    localStore.set(STORAGE_KEY, JSON.stringify(arr))
+    localDataSource.set(STORAGE_KEY, JSON.stringify(arr))
   }
 
   const remove = (id) => {

@@ -16,6 +16,6 @@ class LocalStore {
   }
 }
 
-const localStore = new LocalStore()
+const localDataSource = new LocalStore()
 
-export { localStore }
+export { localDataSource }

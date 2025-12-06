@@ -1,7 +1,6 @@
-const ctx = {
-  //dataSource: 'sys',
-  //track: 'someTrack',
-}
+import { useObjectsStore } from './stores/objects'
+
+let objectsStore
 
 const cmds = {
   add: {
@@ -111,6 +110,7 @@ const cmds = {
     },
     desc: 'Function for logging object by name. Example: run functionName arg1 arg2 ...'
   },
+
   exportDump: {
     f: async ([]) => {
       const a = document.createElement('a')
@@ -121,27 +121,30 @@ const cmds = {
     },
     desc: 'Export dump'
   },
+
+  setDataSourceName: {
+    f: async (args) => {
+      objectsStore.setDataSourceName(args[0])
+    },
+    desc: 'Set dataSourceName. Example: setDataSourceName name'
+  },
 }
 
-const run = async (name, args = []) => {
+export const runCmd = async (name, args = []) => {
   const cmd = cmds[name]
   if (!cmd || !cmd.f) {
     console.warn(`Unknown command: ${name}`)
     return
   }
+  if (!objectsStore) objectsStore = useObjectsStore()
+
   return await cmd.f(args)
 }
 
-const list = () =>
+export const list = () =>
   Object.entries(cmds)
     .filter(([_, v]) => typeof v.f === 'function')
-    .map(([name, v]) => ({ name, desc: v.desc }))
-
-return {
-  cmds,
-  run,
-  list,
-}
+    .map(([name, v]) => ({ name, desc: v.desc }));
 
 // x.createCMDs = (assign = {}) => {
 //   const obj = Object.create(x.CMDs)
