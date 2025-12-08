@@ -63,14 +63,13 @@ const localeDataSource = factoryDataSource.getDataSourceById('local')
 const objectsStore = useObjectsStore()
 const openedObjectsStore = useOpenedObjectsStore()
 
-objectsStore.fetchObjects().then(() => {
-  openedObjectsStore.fetchObjects()
+objectsStore.init().then(() => {
+  openedObjectsStore.init()
 })
 
 const showFileInput = ref(false)
 const inputTextDom = ref(null)
-const inputFileDom = ref(null)
-
+//const inputFileDom = ref(null)
 
 const onKeyDown = (e) => {
   if (e.code === 'Enter') e.preventDefault()
@@ -82,6 +81,8 @@ const onKeyUp = async (e) => {
   const cmdTxt = inputTextDom.value?.textContent ?? ''
   const [cmd, ...args] = cmdTxt.split(' ')
 
+  localeDataSource.set('cmdInput', cmdTxt)
+
   //const file = inputFileDom.value ? inputFileDom.value.files[0] : null
   //args.bin = file ? await x.readFileAsBase64(file) : null
   //args.binMeta = file || null
@@ -91,8 +92,6 @@ const onKeyUp = async (e) => {
   //   inputTextDom.value.textContent = 'Input cmd'
   //   return
   // }
-
-  localeDataSource.set('cmdInput', cmdTxt)
 }
 
 onMounted(() => {
@@ -129,7 +128,6 @@ body {
 
 .cmd-input {
   padding: 0 var(--std-margin);
-  width: 180px;
   background: #a7d0dd;
   white-space: nowrap;
   outline: none;

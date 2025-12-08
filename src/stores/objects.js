@@ -1,43 +1,7 @@
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 
 import { factoryDataSource } from '../dataSource/factoryDataSource.js'
-
-//todo integrate conception of tracks of objects
-
-// x.set = async (k, v) => await x.sysRedis.hset('sys', { [k]: v } )
-// x.get = async (k) => await x.sysRedis.hget('sys', k)
-// x.del = async (k) => await x.sysRedis.hdel('sys', k)
-
-// x.sysRepo = {
-//   set: async (k, v) => await x.sysRedis.hset('sys', { [k]: v } ),
-//   get: async (k) => await x.sysRedis.hget('sys', k),
-//   del: async (k) => await x.sysRedis.hdel('sys', k),
-// }
-// x.userRepo = {
-//   set: async (k, v) => await x.userRedis.hset('user', { [k]: v } ),
-//   get: async (k) => await x.userRedis.hget('user', k),
-//   del: async (k) => await x.userRedis.hdel('user', k),
-// }
-
-// {
-//   const key = 'showSideBar'
-
-//   vue.watch(
-//     x.showSideBar,
-//     (flag) => flag ? x.kvRepo.on(key) : x.kvRepo.off(key),
-//   )
-// }
-
-// {
-//   const key = 'showFileInput'
-//   if (x.kvRepo.get(key)) x[key].value = true
-
-//   vue.watch(
-//     x[key],
-//     (flag) => flag ? x.kvRepo.on(key) : x.kvRepo.off(key),
-//   )
-// }
 
 // x.getByName = (name, repoName = 'sys') => {
 //   const objectsRef = repoName === 'sys' ? x.sys : x.user
@@ -54,24 +18,6 @@ import { factoryDataSource } from '../dataSource/factoryDataSource.js'
 //   return object?.data
 // }
 
-// x.updateObject = (update) => {
-//   const repoRef = update.repoName === 'sys' ? x.sys : x.user
-//   const object = repoRef.value[update.objectId]
-//   if (!object) return
-
-//   const o = vue.toRaw(object)
-//   if (update.data) {
-//     o.data = update.data
-//     x.set(o.id, o)
-//   }
-
-//   const openedObject = x.getOpenedObject(update.openedObjectId)
-//   if (!openedObject) return
-//   if (update.frameParams) {
-//     openedObject.frameParams = update.frameParams
-//   }
-// }
-
 // x.getOpenedObject = (objectId) => {
 //   for (const openedObject of x.openedObjects.value) {
 //     if (openedObject.id === objectId) {
@@ -82,41 +28,56 @@ import { factoryDataSource } from '../dataSource/factoryDataSource.js'
 
 export const useObjectsStore = defineStore('objects', () => {
 
-  const dataSource = ref(factoryDataSource)
-  const dataSourceName = ref('factoryDataSource')
+  const localeDataSource = factoryDataSource.getDataSourceById('local')
 
-  const track = ref('sys')
+  const dataSource = ref({})
+  const dataSourceName = ref(localeDataSource.get('dataSourceName') || 'default')
+
+  const track = ref(localStorage.getItem('track') || 'sys')
   const objects = ref({})
 
-  if (dataSourceName.value !== 'factoryDataSource') {
+  const init = async() => {
+    await processDataSource()
+    await fetchObjects()
+  }
+
+  watch(dataSourceName, (newDataSourceName) => {
+    processDataSource()
+    fetchObjects()
+  })
+
+  watch(track, (newTrack) => {
+    fetchObjects()
+  })
+
+  const processDataSource = () => {
     const newDataSource = factoryDataSource.getDataSourceById(dataSourceName.value)
     if (newDataSource) {
       dataSource.value = newDataSource
     }
-  }
 
-  const setDataSourceName = (dataSourceName) => {
-    dataSourceName.value = dataSourceName
-
-    console.log('setDataSourceName', dataSourceName.value)
-
-    fetchObjects()
-  }
-
-  const setTrack = (track) => {
-    track.value = track
+    if (!newDataSource || dataSourceName.value === 'default') {
+      dataSource.value = factoryDataSource
+      return
+    }
   }
 
   const fetchObjects = async () => {
     const list = await dataSource.value.list(track.value)
-    setObjects(list)
+    objects.value = list || {}
+  }
+
+  const setDataSourceName = (newDataSourceName) => {
+    dataSourceName.value = newDataSourceName
+    localStorage.setItem('dataSourceName', newDataSourceName)
+  }
+
+  const setTrack = (newTrack) => {
+    track.value = newTrack
+    localStorage.setItem('track', track.value)
   }
 
   const getById = (id) => objects.value[id]
-
-  const setObjects = (list) => {
-    objects.value = list || {}
-  }
 
   const addObject = (obj) => {
     objects.value = {
@@ -136,11 +97,11 @@ export const useObjectsStore = defineStore('objects', () => {
     dataSourceName,
     track,
 
+    init,
     getById,
-    setObjects,
     addObject,
     updateObject,
-    fetchObjects,
+    //fetchObjects,
 
     setDataSourceName,
     setTrack,

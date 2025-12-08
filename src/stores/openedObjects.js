@@ -11,6 +11,10 @@ export const useOpenedObjectsStore = defineStore('openedObjects', () => {
   const objectsStore = useObjectsStore()
   const openedObjects = vue.ref([])
 
+  const init = () => {
+    fetchObjects()
+  }
+
   const fetchObjects = () => {
 
     const list = JSON.parse(localDataSource.get(STORAGE_KEY) ?? '[]')
@@ -43,7 +47,8 @@ export const useOpenedObjectsStore = defineStore('openedObjects', () => {
     if (!object) return
 
     openedObjects.value.push({
-      repoName,
+      dataSourceName: objectsStore.dataSourceName.value,
+      track: objectsStore.track.value,
       id: ulid(),
       object,
       objectId: objectId,
@@ -61,7 +66,6 @@ export const useOpenedObjectsStore = defineStore('openedObjects', () => {
 
   const remove = (id) => {
     openedObjects.value = openedObjects.value.filter(o => o.id !== id)
-    //persist()
   }
 
   const updateFrameParams = (openedObjectId, frameParams) => {
@@ -73,7 +77,7 @@ export const useOpenedObjectsStore = defineStore('openedObjects', () => {
 
   return {
     openedObjects,
-    fetchObjects,
+    init,
     add,
     remove,
     updateFrameParams,

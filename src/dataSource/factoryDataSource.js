@@ -7,11 +7,6 @@ const configs = {
     name: 'local',
     type: 'localDataSource',
   },
-  system: {
-    id: 'system',
-    name: 'system',
-    type: 'dataSource',
-  },
   systemRedis: {
     id: 'systemRedis',
     name: 'systemRedis',
@@ -29,9 +24,10 @@ export const factoryDataSource = {
 
   getDataSourceById: (id) => {
     const config = configs[id]
-    if (!config) return null
+    if (!config) return
 
-    if (id === 'local') return localDataSource    
+    if (id === 'local') return localDataSource
+    if (id === 'systemRedis') return redisDataSource
 
     //if (config.type === 'redisDataSource') return redisDataSource
   },

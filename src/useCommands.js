@@ -126,7 +126,14 @@ const cmds = {
     f: async (args) => {
       objectsStore.setDataSourceName(args[0])
     },
-    desc: 'Set dataSourceName. Example: setDataSourceName name'
+    desc: 'Set setDataSourceName. Example: setDataSourceName nameOfDataSource'
+  },
+
+  setTrack: {
+    f: async (args) => {
+      objectsStore.setTrack(args[0])
+    },
+    desc: 'Set track. Example: track nameOfTrack'
   },
 }
 
