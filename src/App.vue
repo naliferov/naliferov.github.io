@@ -18,20 +18,7 @@
         type="file"
       />
 
-      <div><b>Data source:</b> {{ objectsStore.dataSourceName }}</div>
-      <div><b>Track:</b> {{ objectsStore.track }}</div>
-
-      <!-- <div class="opened-objects-list">
-        <div class="heading">Opened Objects</div>
-        <div
-          class="object"
-          v-for="o in openedObjectsStore.openedObjects"
-          :key="o.id"
-          @dblclick="openedObjectsStore.remove(o.id)"
-        >
-          {{ o.object.name }}
-        </div>
-      </div> -->
+      <!-- <div><b>Path:</b> </div> -->
 
       <ObjectList
         repoName="sys"

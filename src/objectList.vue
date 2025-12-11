@@ -1,19 +1,14 @@
 <template>
   <div class="object-list">
-    <div class="heading">Objects</div>
-    <div
-      v-for="(o, objectId) in objects"
-      :key="objectId"
-      class="object"
-      @click="openedObjectsStore.add(repoName, objectId)"
-    >
-      {{ o.name }}
-    </div>
+    <ObjectProps :object="objects" />
   </div>
 </template>
 
 <script setup>
 import { useOpenedObjectsStore } from './stores/openedObjects'
+import ObjectProps from './ObjectProps.vue'
+
+defineOptions({ name: 'ObjectList' })
 
 const props = defineProps({
   repoName: String,

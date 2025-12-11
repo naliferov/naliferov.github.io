@@ -1,6 +1,5 @@
 import { defineStore } from 'pinia'
-import { ref, watch } from 'vue'
-
+import { ref } from 'vue'
 import { factoryDataSource } from '../dataSource/factoryDataSource.js'
 
 // x.getByName = (name, repoName = 'sys') => {
@@ -31,50 +30,40 @@ export const useObjectsStore = defineStore('objects', () => {
   const localeDataSource = factoryDataSource.getDataSourceById('local')
 
   const dataSource = ref({})
-  const dataSourceName = ref(localeDataSource.get('dataSourceName') || 'default')
 
-  const track = ref(localStorage.getItem('track') || 'sys')
-  const objects = ref({})
+  const path = ref(localStorage.getItem('path') || '')
+  const objects = ref({
+    localStore: {
+      id: 'localStore',
+      name: 'localStore',
+    },
+    systemRedis: {
+      id: 'systemRedis',
+      name: 'systemRedis',
+      config: {
+        url: 'https://holy-redfish-7937.upstash.io',
+        token: localStorage.getItem('token') || 'Ah8BAAIgcDH8iJl1rQK-FZD7U3lrmcixchbsva9z2HQRDxtGlxLOrA',
+      },
+      objects: {},
+    },
+  })
 
   const init = async() => {
-    await processDataSource()
-    await fetchObjects()
+    //await fetchObjects()
   }
 
-  watch(dataSourceName, (newDataSourceName) => {
-    processDataSource()
-    fetchObjects()
-  })
-
-  watch(track, (newTrack) => {
-    fetchObjects()
-  })
-
-  const processDataSource = () => {
-    const newDataSource = factoryDataSource.getDataSourceById(dataSourceName.value)
-    if (newDataSource) {
-      dataSource.value = newDataSource
-    }
-
-    if (!newDataSource || dataSourceName.value === 'default') {
-      dataSource.value = factoryDataSource
-      return
-    }
-  }
+  // watch(path, (newTrack) => {
+  //   fetchObjects()
+  // })
 
   const fetchObjects = async () => {
-    const list = await dataSource.value.list(track.value)
+    const list = await dataSource.value.list(path.value)
     objects.value = list || {}
   }
 
-  const setDataSourceName = (newDataSourceName) => {
-    dataSourceName.value = newDataSourceName
-    localStorage.setItem('dataSourceName', newDataSourceName)
-  }
-
-  const setTrack = (newTrack) => {
-    track.value = newTrack
-    localStorage.setItem('track', track.value)
+  const setPath = (newPath) => {
+    path.value = newPath
+    localStorage.setItem('path', path.value)
   }
 
   const getById = (id) => objects.value[id]
@@ -94,17 +83,14 @@ export const useObjectsStore = defineStore('objects', () => {
 
   return {
     objects,
-    dataSourceName,
-    track,
+    path,
 
     init,
     getById,
     addObject,
     updateObject,
     //fetchObjects,
-
-    setDataSourceName,
-    setTrack,
+    setPath,
   }
 })
 
