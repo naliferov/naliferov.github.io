@@ -18,7 +18,14 @@
         type="file"
       />
 
-      <!-- <div><b>Path:</b> </div> -->
+      <div>
+        <b>path: </b>
+        <span
+        contenteditable="plaintext-only"
+        @keydown="onKeyDown"
+        @keyup="onPathKeyUp"
+        class="path">{{ objectsStore.path }}</span> 
+      </div>
 
       <ObjectList
         repoName="sys"
@@ -50,9 +57,9 @@ const localeDataSource = factoryDataSource.getDataSourceById('local')
 const objectsStore = useObjectsStore()
 const openedObjectsStore = useOpenedObjectsStore()
 
-objectsStore.init().then(() => {
-  openedObjectsStore.init()
-})
+//objectsStore.init().then(() => {
+  //openedObjectsStore.init()
+//})
 
 const showFileInput = ref(false)
 const inputTextDom = ref(null)
@@ -69,6 +76,10 @@ const onKeyUp = async (e) => {
   const [cmd, ...args] = cmdTxt.split(' ')
 
   localeDataSource.set('cmdInput', cmdTxt)
+  if (!cmdTxt) {
+    inputTextDom.value.textContent = 'Input cmd'
+    return
+  }
 
   //const file = inputFileDom.value ? inputFileDom.value.files[0] : null
   //args.bin = file ? await x.readFileAsBase64(file) : null
@@ -79,6 +90,15 @@ const onKeyUp = async (e) => {
   //   inputTextDom.value.textContent = 'Input cmd'
   //   return
   // }
+}
+
+const onPathKeyUp = async (e) => {
+  if (e.code !== 'Enter') return
+
+  const path = e.target.textContent.trim()
+  objectsStore.setPath(path || '*')
+
+  e.target.blur()
 }
 
 onMounted(() => {
@@ -114,6 +134,7 @@ body {
 }
 
 .cmd-input {
+  width: fit-content;
   padding: 0 var(--std-margin);
   background: #a7d0dd;
   white-space: nowrap;

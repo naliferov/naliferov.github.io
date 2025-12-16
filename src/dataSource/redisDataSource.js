@@ -6,16 +6,19 @@ const redis = new Redis({
 })
 
 export const redisDataSource = {
-  list: async (track) => {
-    return await redis.hgetall(track)
+  keys: async () => {
+    return await redis.keys('*')
   },
-  get: async (track, id) => {
-    return await redis.hget(track, id)
+  list: async (key) => {
+    return await redis.hgetall(key)
   },
-  set: async (track, id, value) => {
-    await redis.hset(track, { [id]: value })
+  get: async (key, id) => {
+    return await redis.hget(key, id)
   },
-  remove: async (track, id) => {
-    await redis.hdel(track, id)
+  set: async (key, id, value) => {
+    await redis.hset(key, { [id]: value })
+  },
+  remove: async (key, id) => {
+    await redis.hdel(key, id)
   }
 }

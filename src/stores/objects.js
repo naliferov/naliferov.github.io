@@ -28,38 +28,42 @@ import { factoryDataSource } from '../dataSource/factoryDataSource.js'
 export const useObjectsStore = defineStore('objects', () => {
 
   const localeDataSource = factoryDataSource.getDataSourceById('local')
+  const systemRedisDataSource = factoryDataSource.getDataSourceById('systemRedis')
 
-  const dataSource = ref({})
-
-  const path = ref(localStorage.getItem('path') || '')
+  const path = ref(localStorage.getItem('path') || '*')
   const objects = ref({
-    localStore: {
-      id: 'localStore',
-      name: 'localStore',
-    },
+    localStore: {},
     systemRedis: {
-      id: 'systemRedis',
-      name: 'systemRedis',
-      config: {
+      type: 'redis',
+      conf: {
         url: 'https://holy-redfish-7937.upstash.io',
         token: localStorage.getItem('token') || 'Ah8BAAIgcDH8iJl1rQK-FZD7U3lrmcixchbsva9z2HQRDxtGlxLOrA',
       },
-      objects: {},
+      data: {},
+      _x: { dataSource: systemRedisDataSource },
     },
-  })
+  });
 
-  const init = async() => {
-    //await fetchObjects()
-  }
+  (async () => {
+    const systemRedis = objects.value.systemRedis
 
-  // watch(path, (newTrack) => {
-  //   fetchObjects()
-  // })
+    const keys = await systemRedisDataSource.keys()
+    systemRedis.data.keys = keys
 
-  const fetchObjects = async () => {
-    const list = await dataSource.value.list(path.value)
-    objects.value = list || {}
-  }
+     for (let i = 0; i < keys.length; i++) {
+       const key = keys[i]
+       systemRedis.data[key] = await systemRedisDataSource.list(key)
+     }
+  })()
+
+ 
+
+  //v.keys = await dataSource.keys()
+    // for (let i = 0; i < v.keys.length; i++) {
+    //   const key = v.keys[i]
+    //   v[key] = await dataSource.list(key)
+    // }
+  //}
 
   const setPath = (newPath) => {
     path.value = newPath
@@ -82,10 +86,9 @@ export const useObjectsStore = defineStore('objects', () => {
   }
 
   return {
-    objects,
     path,
+    objects,
 
-    init,
     getById,
     addObject,
     updateObject,
